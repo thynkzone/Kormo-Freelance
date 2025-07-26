@@ -1,0 +1,18 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}Contract Not Found{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-12">
+    <div class="bg-white rounded-lg shadow-sm border border-red-200 p-8 text-center">
+        <h1 class="text-2xl font-bold text-red-600 mb-4">Contract Not Found</h1>
+        <p class="text-gray-700 mb-6">
+            Sorry, there is no contract available for this job and freelancer.<br>
+            Please make sure a contract has been created and both parties are correct.
+        </p>
+        <a href="{% url 'job:detail' job.id %}" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+            <i class="fas fa-arrow-left mr-1"></i>Job Details
+        </a>
+    </div>
+</div>
+{% endblock %} 

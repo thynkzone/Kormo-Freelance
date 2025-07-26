@@ -1,0 +1,20 @@
+{% load i18n %}
+
+{% trans "Hello" %} {{ user.username }},
+
+{% trans "Your subscription has been successfully activated!" %}
+
+{% trans "Subscription Details:" %}
+- {% trans "Plan:" %} {{ plan.name }}
+- {% trans "Duration:" %} {{ plan.duration_days }} {% trans "days" %}
+- {% trans "Start Date:" %} {{ start_date }}
+- {% trans "End Date:" %} {{ end_date }}
+
+{% trans "You now have access to all the features included in your subscription plan." %}
+
+{% trans "View your profile here:" %}
+{{ profile_url }}
+
+{% trans "Thank you for choosing our platform!" %}
+
+{% trans "This is an automated message, please do not reply to this email." %} 

@@ -1,0 +1,1252 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<style>
+  .job-post-container {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 600px;
+    padding: 30px;
+    margin: 40px auto;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    position: relative;
+    overflow: visible;
+  }
+
+  @media (max-width: 640px) {
+    .job-post-container {
+      padding: 20px;
+      margin: 20px auto;
+      border-radius: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+
+  /* Ensure form takes full width of container */
+  #job-post-form {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Ensure all form groups stay within container */
+  .form-group {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 24px;
+  }
+
+  /* Ensure step content stays within container */
+  .step-content {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: none;
+    overflow: visible;
+  }
+
+  .step-content.active {
+    display: block;
+  }
+
+  .progress-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    position: relative;
+  }
+
+  .progress-steps::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background-color: #e0e0e0;
+    z-index: 1;
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+    position: relative;
+  }
+
+  .step-number {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .step-number.active {
+    background-color: #22c55e; /* Green-600 */
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  }
+
+  .step-number.completed {
+    background-color: #22c55e;
+  }
+
+  .step-label {
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    .step-label {
+      font-size: 0.7rem;
+    }
+    .step-number {
+      width: 30px;
+      height: 30px;
+    }
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 600;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s;
+    background-color: #f9fafb;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: #22c55e;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+    background-color: #fff;
+  }
+
+  .form-group textarea {
+    min-height: 140px;
+    resize: vertical;
+  }
+
+  .file-upload {
+    border: 2px dashed #e0e0e0;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 8px;
+    background-color: #f9fafb;
+  }
+
+  .file-upload:hover {
+    background-color: #f0f0f0;
+    border-color: #d0d0d0;
+  }
+
+  .file-upload-icon {
+    font-size: 24px;
+    color: #22c55e;
+    margin-bottom: 10px;
+  }
+
+  .file-upload-text {
+    color: #666;
+    margin-bottom: 8px;
+  }
+
+  .file-upload input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .custom-file-upload {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #f0f0f0;
+    color: #333;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+  }
+
+  .custom-file-upload:hover {
+    background-color: #e0e0e0;
+  }
+
+  .skills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .skill-tag {
+    background-color: #f0f0f0;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .skill-tag-remove {
+    cursor: pointer;
+    color: #666;
+    font-size: 0.8rem;
+  }
+
+  .skill-tag-remove:hover {
+    color: #ef4444;
+  }
+
+  .navigation-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s;
+  }
+
+  .btn-prev {
+    background-color: #f0f0f0;
+    color: #333;
+  }
+
+  .btn-prev:hover:not([disabled]) {
+    background-color: #e0e0e0;
+  }
+
+  .btn-next {
+    background-color: #22c55e;
+    color: white;
+  }
+
+  .btn-next:hover {
+    background-color: #16a34a;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .form-error {
+    border-color: #ef4444 !important;
+  }
+
+
+
+  .step-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+
+  .step-description {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .checkbox-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+  }
+
+  .checkbox-list label:hover {
+    background-color: #f0f0f0;
+  }
+
+  .checkbox-list input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #22c55e;
+    cursor: pointer;
+  }
+
+  .file-uploaded {
+    border-color: #22c55e !important;
+    background-color: #f0fdf4 !important;
+  }
+
+  .skill-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
+
+  .skill-checkbox:hover {
+    background-color: #f3f4f6;
+  }
+
+  .skill-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #22c55e;
+  }
+
+  .image-preview {
+    max-width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .skill-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e5e7eb;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .skill-tag-remove {
+    margin-left: 0.5rem;
+    cursor: pointer;
+    color: #6b7280;
+  }
+
+  .skill-tag-remove:hover {
+    color: #ef4444;
+  }
+
+  .budget-field {
+    margin-bottom: 24px !important;
+  }
+
+  /* Ensure form groups have proper spacing */
+  .form-group {
+    margin-bottom: 24px;
+  }
+</style>
+
+<div class="job-post-container">
+  <div class="progress-steps">
+    <div class="step">
+      <div class="step-number active">1</div>
+      <div class="step-label">Job Details</div>
+    </div>
+    <div class="step">
+      <div class="step-number">2</div>
+      <div class="step-label">Skill</div>
+    </div>
+    <div class="step">
+      <div class="step-number">3</div>
+      <div class="step-label">Description</div>
+    </div>
+    <div class="step">
+      <div class="step-number">4</div>
+      <div class="step-label">Budget</div>
+    </div>
+    <div class="step">
+      <div class="step-number">5</div>
+      <div class="step-label">Image</div>
+    </div>
+  </div>
+
+  <form method="POST" action="." enctype="multipart/form-data" id="job-post-form" novalidate onsubmit="return false;">
+    {% csrf_token %}
+
+    <!-- Add this at the top of your form -->
+    <input type="hidden" name="editing" value="true">
+    <input type="hidden" name="payment_status" value="{{ form.instance.payment_status|default:'pending' }}">
+
+    <!-- Add error container at the top of the form -->
+    <div id="form-errors" class="mb-4 hidden">
+      <div class="rounded-md bg-red-50 p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">There were errors with your submission</h3>
+            <div id="error-messages" class="mt-2 text-sm text-red-700"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Job Details -->
+    <div class="step-content active" data-step="1">
+      <h2 class="step-title">Job Details</h2>
+      <p class="step-description">Provide basic information about your job posting.</p>
+      
+      <div class="form-group">
+        <label for="category">Category</label>
+        {{ form.category }}
+        {% if form.category.errors %}
+          <div class="error-message">{{ form.category.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="title">Job Title</label>
+        {{ form.title }}
+        {% if form.title.errors %}
+          <div class="error-message">{{ form.title.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="navigation-buttons">
+        <button type="button" class="btn btn-prev" disabled>Previous</button>
+        <button type="button" class="btn btn-next">Next</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Skills -->
+    <div class="step-content" data-step="2">
+      <h2 class="step-title">Required Skills</h2>
+      <p class="step-description">Select the skills required for this job. You can select up to 5 skills.</p>
+      
+      <div class="form-group">
+        <div class="skills-input-container">
+          <div class="checkbox-list">
+            {% for skill in form.skills %}
+              <label>
+                {{ skill.tag }}
+                <span>{{ skill.choice_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {% if form.skills.errors %}
+            <div class="error-message">{{ form.skills.errors }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="navigation-buttons">
+        <button type="button" class="btn btn-prev">Previous</button>
+        <button type="button" class="btn btn-next">Next</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Description -->
+    <div class="step-content" data-step="3">
+      <h2 class="step-title">Job Description</h2>
+      <p class="step-description">Provide detailed information about the job requirements, deliverables, and timeline.</p>
+      
+      <div class="form-group">
+        <label for="description">Description</label>
+        <div class="relative">
+          {{ form.description }}
+          <div class="absolute bottom-2 right-2 text-sm text-gray-500">
+            <span id="char-count">0</span>/<span id="char-limit">5000</span> characters
+          </div>
+        </div>
+
+        {% if form.description.errors %}
+          <div class="error-message">{{ form.description.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="navigation-buttons">
+        <button type="button" class="btn btn-prev">Previous</button>
+        <button type="button" class="btn btn-next">Next</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Budget -->
+    <div class="step-content" data-step="4">
+      <h2 class="step-title">Budget</h2>
+      <p class="step-description">Set your budget for this project. Clear budget expectations help attract the right freelancers.</p>
+      
+      <div class="form-group budget-field">
+        <label for="budget">Budget (৳)</label>
+        {{ form.budget }}
+        {% if form.budget.errors %}
+          <div class="mt-2 text-sm text-red-600">
+            {% for error in form.budget.errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label for="deadline">Deadline (in days)</label>
+        {{ form.deadline }}
+        {% if form.deadline.errors %}
+          <div class="mt-2 text-sm text-red-600">
+            {% for error in form.deadline.errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="navigation-buttons">
+        <button type="button" class="btn btn-prev">Previous</button>
+        <button type="button" class="btn btn-next">Next</button>
+      </div>
+    </div>
+
+    <!-- Step 5: Image Upload -->
+    <div class="step-content" data-step="5">
+      <h2 class="step-title">Upload Job Image</h2>
+      <p class="step-description">Add an image that represents your project. Jobs with images get more attention from freelancers.</p>
+      
+      <div class="form-group">
+        <label for="image">Job Image</label>
+        <div class="mt-1 max-w-full overflow-hidden">
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="flex-1 min-w-[200px]">
+              <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-green-500 transition-colors duration-200">
+                <div class="space-y-3">
+                  <div class="flex flex-col items-center space-y-2">
+                    <label for="id_image" class="cursor-pointer w-full">
+                      <span class="inline-flex items-center justify-center w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-600 bg-green-50 hover:bg-green-100">
+                        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Upload a file
+                      </span>
+                      <input id="id_image" name="image" type="file" class="sr-only" accept="image/*">
+                    </label>
+                    <p class="text-sm text-gray-500">or drag and drop</p>
+                  </div>
+                  <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                </div>
+              </div>
+            </div>
+            <div class="w-[200px] flex-shrink-0">
+              <div class="aspect-w-16 aspect-h-9 bg-gray-100 rounded-lg overflow-hidden shadow-sm">
+                {% if form.instance.image and form.instance.image.name %}
+                  <img id="job-image-preview" src="{{ form.instance.image.url }}" alt="Job" class="object-cover w-full h-full">
+                {% else %}
+                  <img id="job-image-preview" src="https://cdn.pixabay.com/photo/2021/10/18/23/07/hiring-6722314_1280.png" alt="Job" class="object-cover w-full h-full">
+                {% endif %}
+              </div>
+              <div class="mt-2 flex justify-end">
+                <button type="button" id="remove-job-image" class="{% if not form.instance.image or not form.instance.image.name %}hidden{% endif %} inline-flex items-center px-3 py-1 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                  <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Remove
+                </button>
+                <input type="hidden" name="image-clear" id="image-clear" value="false">
+              </div>
+            </div>
+          </div>
+        </div>
+        {% if form.image.errors %}
+          <div class="mt-2 text-sm text-red-600">
+            {% for error in form.image.errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="navigation-buttons">
+        <button type="button" class="btn btn-prev">Previous</button>
+        <button type="button" id="submit-job" class="btn btn-next">Post Job</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let isSubmitting = false;
+        let formInitialized = false;
+        
+        // Character counter for description
+        const descriptionTextarea = document.querySelector('#id_description');
+        const charCount = document.getElementById('char-count');
+        const charLimit = document.getElementById('char-limit');
+        const MIN_CHARS = 100;
+        const MAX_CHARS = 5000;
+
+        if (descriptionTextarea && charCount) {
+            function updateCharCount() {
+                const length = descriptionTextarea.value.length;
+                charCount.textContent = length;
+                
+                // Update color based on length
+                if (length < MIN_CHARS) {
+                    charCount.style.color = '#ef4444'; // red
+                } else if (length > MAX_CHARS) {
+                    charCount.style.color = '#ef4444'; // red
+                } else {
+                    charCount.style.color = '#6b7280'; // gray
+                }
+            }
+
+            descriptionTextarea.addEventListener('input', updateCharCount);
+            updateCharCount(); // Initial count
+        }
+
+        // Step navigation
+        const steps = document.querySelectorAll('.step');
+        const stepContents = document.querySelectorAll('.step-content');
+        const prevButtons = document.querySelectorAll('.btn-prev');
+        const nextButtons = document.querySelectorAll('.btn-next');
+        let currentStep = 1;
+
+        function validateStep(step) {
+            let isValid = true;
+            const stepContent = document.querySelector(`.step-content[data-step="${step}"]`);
+            const requiredFields = stepContent.querySelectorAll('[required]');
+            const errorContainer = document.getElementById('form-errors');
+            const errorMessages = document.getElementById('error-messages');
+
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+            }
+            if (errorMessages) {
+                errorMessages.innerHTML = '';
+            }
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('form-error');
+                    
+                    if (errorContainer) {
+                        errorContainer.classList.remove('hidden');
+                        const errorMessage = document.createElement('div');
+                        errorMessage.textContent = `${field.previousElementSibling.textContent} is required`;
+                        errorMessages.appendChild(errorMessage);
+                    }
+                } else {
+                    field.classList.remove('form-error');
+                }
+            });
+
+            // Add budget validation
+            if (step === 4) {
+                const budget = document.querySelector('#id_budget');
+                if (budget) {
+                    const value = parseInt(budget.value, 10);
+                    if (value > 9999) {
+                        isValid = false;
+                        budget.classList.add('form-error');
+                        const budgetErrorDiv = budget.parentElement.querySelector('.mt-2.text-sm.text-red-600') || document.createElement('div');
+                        budgetErrorDiv.className = 'mt-2 text-sm text-red-600';
+                        budgetErrorDiv.innerHTML = '<p>Contracts above ৳ 9999 are not permitted.</p>';
+                        if (!budget.parentElement.querySelector('.mt-2.text-sm.text-red-600')) {
+                            budget.parentElement.appendChild(budgetErrorDiv);
+                        }
+                    } else {
+                        budget.classList.remove('form-error');
+                        const budgetErrorDiv = budget.parentElement.querySelector('.mt-2.text-sm.text-red-600');
+                        if (budgetErrorDiv) {
+                            budgetErrorDiv.remove();
+                        }
+                    }
+                }
+
+                // Add deadline validation
+                const deadline = document.querySelector('#id_deadline');
+                if (deadline && deadline.value.trim()) {
+                    const deadlineValue = parseInt(deadline.value, 10);
+                    if (isNaN(deadlineValue) || deadlineValue <= 0) {
+                        isValid = false;
+                        deadline.classList.add('form-error');
+                        const deadlineErrorDiv = deadline.parentElement.querySelector('.mt-2.text-sm.text-red-600') || document.createElement('div');
+                        deadlineErrorDiv.className = 'mt-2 text-sm text-red-600';
+                        deadlineErrorDiv.innerHTML = '<p>Deadline must be a positive number.</p>';
+                        if (!deadline.parentElement.querySelector('.mt-2.text-sm.text-red-600')) {
+                            deadline.parentElement.appendChild(deadlineErrorDiv);
+                        }
+                    } else if (deadlineValue > 90) {
+                        isValid = false;
+                        deadline.classList.add('form-error');
+                        const deadlineErrorDiv = deadline.parentElement.querySelector('.mt-2.text-sm.text-red-600') || document.createElement('div');
+                        deadlineErrorDiv.className = 'mt-2 text-sm text-red-600';
+                        deadlineErrorDiv.innerHTML = '<p>Deadline cannot exceed 90 days.</p>';
+                        if (!deadline.parentElement.querySelector('.mt-2.text-sm.text-red-600')) {
+                            deadline.parentElement.appendChild(deadlineErrorDiv);
+                        }
+                    } else {
+                        deadline.classList.remove('form-error');
+                        const deadlineErrorDiv = deadline.parentElement.querySelector('.mt-2.text-sm.text-red-600');
+                        if (deadlineErrorDiv) {
+                            deadlineErrorDiv.remove();
+                        }
+                    }
+                }
+            }
+
+            // Add description length validation
+            if (step === 3) {
+                const description = document.querySelector('#id_description');
+                if (description) {
+                    const length = description.value.length;
+                    if (length < MIN_CHARS) {
+                        isValid = false;
+                        description.classList.add('form-error');
+                        if (errorContainer) {
+                            errorContainer.classList.remove('hidden');
+                            const errorMessage = document.createElement('div');
+                            errorMessage.textContent = `Description must be at least ${MIN_CHARS} characters`;
+                            errorMessages.appendChild(errorMessage);
+                        }
+                    } else if (length > MAX_CHARS) {
+                        isValid = false;
+                        description.classList.add('form-error');
+                        if (errorContainer) {
+                            errorContainer.classList.remove('hidden');
+                            const errorMessage = document.createElement('div');
+                            errorMessage.textContent = `Description cannot exceed ${MAX_CHARS} characters`;
+                            errorMessages.appendChild(errorMessage);
+                        }
+                    } else {
+                        description.classList.remove('form-error');
+                    }
+                }
+            }
+
+            if (step === 2) {
+                const skillCheckboxes = stepContent.querySelectorAll('input[type="checkbox"]');
+                const checkedSkills = Array.from(skillCheckboxes).filter(cb => cb.checked);
+                if (checkedSkills.length === 0) {
+                    isValid = false;
+                    if (errorContainer) {
+                        errorContainer.classList.remove('hidden');
+                        const errorMessage = document.createElement('div');
+                        errorMessage.textContent = 'Please select at least one skill';
+                        errorMessages.appendChild(errorMessage);
+                    }
+                }
+            }
+
+            // Skip image validation for step 5 since it's optional
+            if (step === 5) {
+                isValid = true;
+            }
+
+            return isValid;
+        }
+
+        // Initialize form submission handler only once
+        function initializeFormSubmission() {
+            if (formInitialized) return;
+            
+            const form = document.getElementById('job-post-form');
+            const submitButton = document.getElementById('submit-job');
+            
+            if (!form || !submitButton) return;
+            
+            // Remove any existing event listeners
+            const newSubmitButton = submitButton.cloneNode(true);
+            submitButton.parentNode.replaceChild(newSubmitButton, submitButton);
+            
+            newSubmitButton.addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (isSubmitting) {
+                    return;
+                }
+                
+                // Validate all steps before submission
+                let allStepsValid = true;
+                for (let step = 1; step <= 5; step++) {
+                    if (!validateStep(step)) {
+                        allStepsValid = false;
+                        break;
+                    }
+                }
+                
+                if (!allStepsValid) {
+                    return;
+                }
+                
+                try {
+                    isSubmitting = true;
+                    newSubmitButton.disabled = true;
+                    
+                    // Disable all form inputs
+                    const formInputs = form.querySelectorAll('input, select, textarea, button');
+                    formInputs.forEach(input => input.disabled = true);
+                    
+                    // Create FormData object
+                    const formData = new FormData(form);
+                    
+                    // Handle image upload
+                    const imageInput = document.getElementById('id_image');
+                    const imageClear = document.getElementById('image-clear');
+                    
+                    // If editing and no new image is uploaded
+                    if (form.querySelector('input[name="editing"]')) {
+                        if (imageClear && imageClear.value === 'true') {
+                            formData.set('image-clear', 'true');
+                            formData.delete('image');
+                        } else if (imageInput.files.length > 0) {
+                            formData.set('image', imageInput.files[0]);
+                        } else {
+                            formData.delete('image');
+                            formData.delete('image-clear');
+                        }
+                    } else if (imageInput.files.length > 0) {
+                        formData.set('image', imageInput.files[0]);
+                    }
+                    
+                    // Ensure all required fields are included
+                    const requiredFields = ['category', 'title', 'description', 'budget', 'skills', 'payment_status'];
+                    requiredFields.forEach(field => {
+                        if (!formData.has(field)) {
+                            const element = form.querySelector(`[name="${field}"]`);
+                            if (element) {
+                                if (element.type === 'checkbox') {
+                                    // Handle checkboxes
+                                    const checkboxes = form.querySelectorAll(`[name="${field}"]:checked`);
+                                    checkboxes.forEach(checkbox => {
+                                        formData.append(field, checkbox.value);
+                                    });
+                                } else {
+                                    // Special handling for budget field
+                                    if (field === 'budget') {
+                                        const budgetValue = parseInt(element.value);
+                                        if (isNaN(budgetValue) || budgetValue <= 0) {
+                                            throw new Error('Budget must be greater than 0');
+                                        }
+                                        if (budgetValue > 9999) {
+                                            throw new Error('Budget cannot exceed ৳ 9999');
+                                        }
+                                    }
+                                    formData.append(field, element.value);
+                                }
+                            }
+                        } else {
+                            // Special handling for budget field in existing form data
+                            if (field === 'budget') {
+                                const budgetValue = parseInt(formData.get(field));
+                                if (isNaN(budgetValue) || budgetValue <= 0) {
+                                    throw new Error('Budget must be greater than 0');
+                                }
+                                if (budgetValue > 9999) {
+                                    throw new Error('Budget cannot exceed ৳ 9999');
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Add deadline field if it has a value
+                    const deadlineField = form.querySelector('[name="deadline"]');
+                    if (deadlineField && deadlineField.value.trim()) {
+                        const deadlineValue = parseInt(deadlineField.value, 10);
+                        if (isNaN(deadlineValue) || deadlineValue <= 0) {
+                            throw new Error('Deadline must be a positive number');
+                        }
+                        if (deadlineValue > 90) {
+                            throw new Error('Deadline cannot exceed 90 days');
+                        }
+                        formData.append('deadline', deadlineField.value);
+                    }
+                    
+                    // Submit the form using fetch
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Show success message
+                        const messageContainer = document.createElement('div');
+                        messageContainer.className = 'fixed top-20 left-0 right-0 z-50 px-4';
+                        messageContainer.innerHTML = `
+                            <div class="max-w-7xl mx-auto">
+                                <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-md shadow-lg">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-green-700">Job posted successfully!</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(messageContainer);
+                        
+                        // Redirect immediately
+                        window.location.href = data.redirect_url;
+                    } else {
+                        // Handle errors
+                        const errorContainer = document.getElementById('form-errors');
+                        const errorMessages = document.getElementById('error-messages');
+                        
+                        if (errorContainer && errorMessages) {
+                            errorContainer.classList.remove('hidden');
+                            errorMessages.innerHTML = '';
+                            
+                            if (data.errors) {
+                                Object.entries(data.errors).forEach(([field, errors]) => {
+                                    const errorMessage = document.createElement('div');
+                                    errorMessage.textContent = Array.isArray(errors) ? errors.join(', ') : errors;
+                                    errorMessages.appendChild(errorMessage);
+                                });
+                            } else {
+                                const errorMessage = document.createElement('div');
+                                errorMessage.textContent = 'An error occurred while submitting the form. Please try again.';
+                                errorMessages.appendChild(errorMessage);
+                            }
+                        }
+                        
+                        // Re-enable form inputs
+                        formInputs.forEach(input => input.disabled = false);
+                        newSubmitButton.disabled = false;
+                        isSubmitting = false;
+                    }
+                } catch (error) {
+                    const errorContainer = document.getElementById('form-errors');
+                    const errorMessages = document.getElementById('error-messages');
+                    
+                    if (errorContainer && errorMessages) {
+                        errorContainer.classList.remove('hidden');
+                        errorMessages.innerHTML = `<div>${error.message}</div>`;
+                    }
+                    
+                    // Re-enable form inputs
+                    formInputs.forEach(input => input.disabled = false);
+                    newSubmitButton.disabled = false;
+                    isSubmitting = false;
+                }
+            });
+            
+            formInitialized = true;
+        }
+        
+        // Initialize form submission
+        initializeFormSubmission();
+
+        function updateStepVisibility() {
+            // Update step numbers
+            steps.forEach((step, index) => {
+                const stepNumber = step.querySelector('.step-number');
+                if (index + 1 === currentStep) {
+                    stepNumber.classList.add('active');
+                    stepNumber.classList.remove('completed');
+                } else if (index + 1 < currentStep) {
+                    stepNumber.classList.remove('active');
+                    stepNumber.classList.add('completed');
+                } else {
+                    stepNumber.classList.remove('active', 'completed');
+                }
+            });
+
+            // Update content visibility
+            stepContents.forEach((content, index) => {
+                if (index + 1 === currentStep) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+
+            // Update button states
+            prevButtons.forEach(button => {
+                button.disabled = currentStep === 1;
+            });
+
+            nextButtons.forEach(button => {
+                if (currentStep === 5) {
+                    button.setAttribute('type', 'submit');
+                    button.textContent = 'Post Job';
+                } else {
+                    button.setAttribute('type', 'button');
+                    button.textContent = 'Next';
+                }
+            });
+        }
+
+        // Initialize step visibility
+        updateStepVisibility();
+
+        // Handle next button clicks
+        nextButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                if (currentStep < 5) {
+                    e.preventDefault();
+                    if (validateStep(currentStep)) {
+                        currentStep++;
+                        updateStepVisibility();
+                    }
+                }
+            });
+        });
+
+        // Handle previous button clicks
+        prevButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (currentStep > 1) {
+                    currentStep--;
+                    updateStepVisibility();
+                }
+            });
+        });
+
+        // Job image preview
+        const jobImageInput = document.getElementById('id_image');
+        const jobImagePreview = document.getElementById('job-image-preview');
+        const removeJobImageButton = document.getElementById('remove-job-image');
+        const dropZone = document.querySelector('.border-dashed');
+        const imageClearInput = document.getElementById('image-clear');
+
+        function updateImagePreview(file) {
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (jobImagePreview) {
+                        jobImagePreview.src = e.target.result;
+                        jobImagePreview.classList.remove('hidden');
+                        if (removeJobImageButton) {
+                            removeJobImageButton.classList.remove('hidden');
+                        }
+                        if (dropZone) {
+                            dropZone.classList.add('file-uploaded');
+                        }
+                        if (imageClearInput) {
+                            imageClearInput.value = 'false';
+                        }
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        if (jobImageInput) {
+            jobImageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    // Check file size (10MB limit)
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('File size must be less than 10MB');
+                        this.value = '';
+                        return;
+                    }
+                    // Check file type
+                    if (!file.type.startsWith('image/')) {
+                        alert('Please upload an image file');
+                        this.value = '';
+                        return;
+                    }
+                    updateImagePreview(file);
+                }
+            });
+
+            if (dropZone) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                });
+
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, highlight, false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, unhighlight, false);
+                });
+
+                function highlight(e) {
+                    dropZone.classList.add('border-green-500', 'bg-green-50');
+                }
+
+                function unhighlight(e) {
+                    dropZone.classList.remove('border-green-500', 'bg-green-50');
+                }
+
+                dropZone.addEventListener('drop', handleDrop, false);
+
+                function handleDrop(e) {
+                    const dt = e.dataTransfer;
+                    const file = dt.files[0];
+                    if (file) {
+                        // Check file size (10MB limit)
+                        if (file.size > 10 * 1024 * 1024) {
+                            alert('File size must be less than 10MB');
+                            return;
+                        }
+                        // Check file type
+                        if (!file.type.startsWith('image/')) {
+                            alert('Please upload an image file');
+                            return;
+                        }
+                        jobImageInput.files = dt.files;
+                        updateImagePreview(file);
+                    }
+                }
+            }
+        }
+
+        if (removeJobImageButton) {
+            removeJobImageButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (jobImageInput) {
+                    jobImageInput.value = '';
+                }
+                if (jobImagePreview) {
+                    jobImagePreview.src = 'https://cdn.pixabay.com/photo/2021/10/18/23/07/hiring-6722314_1280.png';
+                }
+                if (removeJobImageButton) {
+                    removeJobImageButton.classList.add('hidden');
+                }
+                if (dropZone) {
+                    dropZone.classList.remove('file-uploaded');
+                }
+                if (imageClearInput) {
+                    imageClearInput.value = 'true';
+                }
+            });
+        }
+
+        // Add budget input validation
+        const budgetInput = document.querySelector('#id_budget');
+        if (budgetInput) {
+            budgetInput.addEventListener('blur', function(e) {
+                let value = this.value;
+                if (value) {
+                    const numValue = parseInt(value, 10);
+                    if (isNaN(numValue)) {
+                        this.value = '300';
+                        const errorContainer = document.getElementById('form-errors');
+                        const errorMessages = document.getElementById('error-messages');
+                        if (errorContainer && errorMessages) {
+                            errorContainer.classList.remove('hidden');
+                            errorMessages.innerHTML = '<div>Please enter a valid number for budget</div>';
+                        }
+                    } else if (numValue < 300) {
+                        this.value = '300';
+                        const errorContainer = document.getElementById('form-errors');
+                        const errorMessages = document.getElementById('error-messages');
+                        if (errorContainer && errorMessages) {
+                            errorContainer.classList.remove('hidden');
+                            errorMessages.innerHTML = '<div>Budget must be at least ৳ 300</div>';
+                        }
+                    } else if (numValue > 9999) {
+                        this.value = '9999';
+                        const errorContainer = document.getElementById('form-errors');
+                        const errorMessages = document.getElementById('error-messages');
+                        if (errorContainer && errorMessages) {
+                            errorContainer.classList.remove('hidden');
+                            errorMessages.innerHTML = '<div>Budget must be less than ৳ 9999</div>';
+                        }
+                    }
+                }
+            });
+        }
+
+        // Add deadline input validation
+        const deadlineInput = document.querySelector('#id_deadline');
+        if (deadlineInput) {
+            deadlineInput.addEventListener('blur', function(e) {
+                let value = this.value;
+                if (value) {
+                    const numValue = parseInt(value, 10);
+                    if (isNaN(numValue) || numValue <= 0) {
+                        this.value = '7';
+                        const errorContainer = document.getElementById('form-errors');
+                        const errorMessages = document.getElementById('error-messages');
+                        if (errorContainer && errorMessages) {
+                            errorContainer.classList.remove('hidden');
+                            errorMessages.innerHTML = '<div>Please enter a valid positive number for deadline</div>';
+                        }
+                    } else if (numValue > 90) {
+                        this.value = '90';
+                        const errorContainer = document.getElementById('form-errors');
+                        const errorMessages = document.getElementById('error-messages');
+                        if (errorContainer && errorMessages) {
+                            errorContainer.classList.remove('hidden');
+                            errorMessages.innerHTML = '<div>Deadline must be 90 days or less</div>';
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 

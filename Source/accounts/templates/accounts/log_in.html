@@ -1,0 +1,121 @@
+{% extends 'layouts/default/page.html' %}
+{% load socialaccount %}
+
+{% load bootstrap4 %}
+{% load i18n %}
+
+{% block content %}
+
+<style>
+    h3 {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+
+    p {
+        font-size: 1rem;
+        color: var(--color-dark-gray);
+    }
+
+    .striped {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }
+
+    .striped-line {
+        flex-grow: 1;
+        height: 1px;
+        background: var(--color-gray);
+    }
+
+    .striped-text {
+        font-size: 0.9rem;
+        color: var(--color-dark-gray);
+    }
+
+    .google-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        border: 1px solid var(--color-gray);
+        border-radius: 8px;
+        background: var(--color-white);
+        cursor: pointer;
+        transition: background 0.3s, transform 0.2s;
+    }
+
+    .google-btn:hover {
+        background: var(--color-gray);
+        transform: translateY(-3px);
+    }
+
+    .google-btn img {
+        width: 20px;
+        height: 20px;
+    }
+
+    .footer {
+        text-align: center;
+        margin-top: 2rem;
+        font-size: 0.9rem;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+        <h3><i class="fa-solid fa-house"></i> Sign in</h3>
+        <p>New user? <a href="{% url 'accounts:sign_up' %}" class="text-links">Create an account</a></p>
+
+    <form method="post" name="signin" class="form">
+        {% csrf_token %}
+        {% bootstrap_form form %}
+
+        <input type="submit" value="Log in" class="btn">
+    </form>
+
+    <div class="striped">
+        <span class="striped-line"></span>
+        <span class="striped-text">Or</span>
+        <span class="striped-line"></span>
+    </div>
+
+    <button class="google-btn w-100" data-google-login-url="{% provider_login_url 'google' %}?next=/">
+        <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google logo">
+        Continue with Google
+    </button>
+
+    <div class="footer">
+        <a href="{% url 'accounts:restore_password' %}" class="text-links">Forgot your password?</a>
+        <br>
+        <a href="{% url 'accounts:resend_activation_code' %}" class="text-links">Resend activation code</a>
+        <br><br>
+        <span class="fs-4" style="color: #32CD32;">
+            <i class="fa-solid fa-fire-flame-curved"></i>
+        </span>
+        <span class="fs-4 fw-bold text-dark">Kormo</span>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const googleBtn = document.querySelector('.google-btn');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', function() {
+                window.location.href = this.getAttribute('data-google-login-url');
+            });
+        }
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0-alpha1/js/bootstrap.bundle.min.js" integrity="sha512-Sct/LCTfkoqr7upmX9VZKEzXuRk5YulFoDTunGapYJdlCwA+Rl4RhgcPCLf7awTNLmIVrszTPNUFu4MSesep5Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</body>
+</html>
+  
+
+{% endblock %}

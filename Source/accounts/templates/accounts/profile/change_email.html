@@ -1,0 +1,120 @@
+{% extends 'layouts/default/page.html' %}
+
+{% load bootstrap4 %}
+{% load i18n %}
+
+{% block content %}
+
+<style>
+    h3 {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    
+    p {
+        font-size: 1rem;
+        color: var(--color-dark-gray);
+    }
+    
+    .form {
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .input-field {
+        padding: 1rem;
+        font-size: 1rem;
+        border: 1px solid var(--color-gray);
+        border-radius: 8px;
+        background: #f9f9f9;
+        transition: border 0.3s;
+    }
+    
+    .input-field:focus {
+        border: 1px solid var(--color-green);
+        outline: none;
+    }
+    
+    .btn {
+        padding: 1rem;
+        font-size: 1rem;
+        background: var(--color-green);
+        color: var(--color-white);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .btn:hover {
+        background: #21b810;
+        color: #fff;
+    }
+    
+    .text-links {
+        font-size: 0.9rem;
+        color: var(--color-green);
+        text-decoration: none;
+        transition: color 0.3s;
+    }
+    
+    .text-links:hover {
+        text-decoration: underline;
+    }
+    
+    .footer {
+        text-align: center;
+        margin-top: 2rem;
+        font-size: 0.9rem;
+    }
+    input, select, textarea {
+        margin-bottom: 15px; /* Adds space between input fields */
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        width: 100%;
+    }
+    </style>
+
+</head>
+<body>
+    <div class="container">
+    <form method="post">
+
+        <h4>{% trans 'Change email' %}</h4>
+
+        {% csrf_token %}
+        {% bootstrap_form form %}
+
+        <button class="btn btn-success w-100 mt-4">{% trans 'Request to Change' %}</button>
+
+    </form>
+        <div class="footer">
+            <a href="{% url 'freelancer:new' %}" class="text-links">{% trans 'Get Back to Profile.' %}</a>
+            <br><br>
+            <span class="fs-4" style="color: #32CD32;">
+                <i class="fa-solid fa-fire-flame-curved"></i>
+            </span>
+            <span class="fs-4 fw-bold text-dark">Kormo</span>
+        </div>
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0-alpha1/js/bootstrap.bundle.min.js" integrity="sha512-Sct/LCTfkoqr7upmX9VZKEzXuRk5YulFoDTunGapYJdlCwA+Rl4RhgcPCLf7awTNLmIVrszTPNUFu4MSesep5Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Find the email input field and clear its value
+    const emailInput = document.querySelector('input[type="email"]');
+    if (emailInput) {
+        emailInput.value = '';
+        emailInput.placeholder = 'Enter new email address';
+    }
+});
+</script>
+</body>
+</html>
+
+{% endblock %}

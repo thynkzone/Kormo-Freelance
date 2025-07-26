@@ -1,0 +1,387 @@
+{% load static %}
+{% load bootstrap4 %}
+{% load i18n %}
+{% load tz %}
+
+{% get_current_language as language_code %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Students for Students">
+    <meta name="author" content="Md. Mazidul Haque Farabi">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
+    <title>Kormo</title>
+
+    <link rel="icon" href="{% static 'bd-icon.ico' %}">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0-alpha1/css/bootstrap.min.css" integrity="sha512-72OVeAaPeV8n3BdZj7hOkaPSEk/uwpDkaGyP4W2jSzAC8tfiO4LMEDWoL3uFp5mcZu+8Eehb4GhZWFwvrss69Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preload" as="image" href="{% static 'loading.gif' %}" type="image/gif">
+
+    <style>
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            transition: opacity 0.2s ease-out;
+            backdrop-filter: blur(3px);
+        }
+        
+        #loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-image {
+            max-width: 60px;
+            max-height: 60px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Make content visible but blurred while loading */
+        body.loading {
+            height: 100vh;
+            overflow: hidden;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Loading screen code
+            const loadingScreen = document.getElementById('loading-screen');
+            
+            // Hide loading screen when main content is loaded
+            function hideLoadingScreen() {
+                loadingScreen.classList.add('fade-out');
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 200);
+            }
+            
+            // Hide loading screen when DOM is ready
+            window.requestAnimationFrame(() => {
+                if (document.readyState === 'complete') {
+                    hideLoadingScreen();
+                } else {
+                    window.addEventListener('load', hideLoadingScreen);
+                }
+            });
+            
+            // Fallback: Hide loading screen after short timeout
+            setTimeout(hideLoadingScreen, 1500);
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                let cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    let cookie = cookies[i].trim();
+                    if (cookie.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <img src="{% static 'loading.gif' %}" alt="Loading..." class="loading-image" onerror="console.error('Failed to load:', this.src);">
+    </div>
+
+    <nav class="py-3 px-4 md:px-6 flex justify-between items-center border-b border-gray-100 bg-white shadow-sm">
+        <!-- Logo with brandname -->
+        <a href="/" class="flex items-center space-x-2">
+            <span class="text-2xl" style="color: #32CD32;">
+                <i class="fa-solid fa-fire-flame-curved"></i>
+            </span>
+            <span class="text-2xl font-bold text-gray-900">Kormo</span>
+        </a>
+    
+        <!-- Desktop Navigation - more like the reference image -->
+        <div class="hidden lg:flex items-center space-x-5">
+            {% if user.is_authenticated %}
+            <a href="{% url 'job:new' %}" class="flex items-center {% if request.resolver_match.view_name == 'job:new' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-square-plus text-sm mr-2 {% if request.resolver_match.view_name == 'job:new' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">New Job</span>
+            </a>
+            <a href="{% url 'job:jobs' %}" class="flex items-center {% if request.resolver_match.view_name == 'job:jobs' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-solid fa-briefcase text-sm mr-2 {% if request.resolver_match.view_name == 'job:jobs' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">Jobs</span>
+            </a>
+            <a href="{% url 'freelancer:freelancers' %}" class="flex items-center {% if request.resolver_match.view_name == 'freelancer:freelancers' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fas fa-search text-sm mr-2 {% if request.resolver_match.view_name == 'freelancer:freelancers' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">Freelancers</span>
+            </a>
+            <a href="{% url 'conversation:inbox' %}" class="flex items-center {% if request.resolver_match.view_name == 'conversation:inbox' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-message text-sm mr-2 {% if request.resolver_match.view_name == 'conversation:inbox' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">Conversations</span>
+                {% if total_unread > 0 %}
+                    <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        {{ total_unread }}
+                    </span>
+                {% endif %}
+            </a>
+            {% if user.is_authenticated %}
+            <a href="{% url 'dashboard:notifications' %}" class="flex items-center {% if request.resolver_match.view_name == 'dashboard:notifications' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-bell text-sm mr-2 {% if request.resolver_match.view_name == 'dashboard:notifications' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">Notifications</span>
+                {% if unread_notifications_count > 0 %}
+                    <span class="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        {{ unread_notifications_count }}
+                    </span>
+                {% endif %}
+            </a>
+            {% endif %}
+            <a href="{% url 'dashboard:dashboard' %}" class="flex items-center {% if request.resolver_match.view_name == 'dashboard:dashboard' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-rectangle-list text-sm mr-2 {% if request.resolver_match.view_name == 'dashboard:dashboard' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">My Jobs</span>
+            </a>
+            {% if request.user.freelancer %}
+            <a href="{% url 'freelancer:edit' pk=request.user.freelancer.id %}" 
+               class="flex items-center {% if request.resolver_match.view_name == 'freelancer:edit' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-circle-user text-sm mr-2 {% if request.resolver_match.view_name == 'freelancer:edit' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">Edit Profile</span>
+            </a>
+            {% else %}
+            <a href="{% url 'freelancer:new' %}" 
+               class="flex items-center {% if request.resolver_match.view_name == 'freelancer:new' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-circle-user text-sm mr-2 {% if request.resolver_match.view_name == 'freelancer:new' %}text-green-600{% endif %}"></i>
+                <span class="text-sm font-medium">Create Profile</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'accounts:log_out' %}" class="flex items-center text-gray-600 hover:text-gray-900">
+                <i class="fas fa-sign-out-alt text-sm mr-2"></i>
+                <span class="text-sm font-medium">Logout</span>
+            </a>
+            <!-- Profile Picture -->
+            <div class="flex items-center ml-4">
+                {% if request.user.freelancer and request.user.freelancer.profile_image %}
+                    <img src="{{ request.user.freelancer.profile_image.url }}" alt="Profile" class="w-8 h-8 rounded-full object-cover">
+                {% else %}
+                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <i class="fa-regular fa-circle-user text-gray-400"></i>
+                    </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <a href="{% url 'accounts:sign_up' %}" class="flex items-center text-gray-600 hover:text-gray-900">
+                <i class="fa-solid fa-user-plus text-sm mr-2"></i>
+                <span class="text-sm font-medium">Sign Up</span>
+            </a>
+            <a href="{% url 'accounts:log_in' %}" class="flex items-center text-gray-600 hover:text-gray-900">
+                <i class="fa-solid fa-right-to-bracket text-sm mr-2"></i>
+                <span class="text-sm font-medium">Log In</span>
+            </a>
+            {% endif %}
+        </div>
+    
+        <!-- Mobile menu button -->
+        <div class="lg:hidden flex items-center space-x-4">
+            {% if user.is_authenticated %}
+            <a href="{% url 'dashboard:notifications' %}" class="relative flex items-center justify-center w-10 h-10 {% if request.resolver_match.view_name == 'dashboard:notifications' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-bell text-lg {% if request.resolver_match.view_name == 'dashboard:notifications' %}text-green-600{% endif %}"></i>
+                {% if unread_notifications_count > 0 %}
+                    <span class="absolute top-1 right-1 bg-red-100 text-red-800 text-xs font-medium px-1.5 py-0.5 rounded-full leading-none">
+                        {{ unread_notifications_count }}
+                    </span>
+                {% endif %}
+            </a>
+            {% endif %}
+            <button class="focus:outline-none" id="mobile-menu-button">
+                <!-- Profile Picture in Mobile Top Nav -->
+                {% if user.is_authenticated %}
+                <div class="flex items-center">
+                    {% if request.user.freelancer and request.user.freelancer.profile_image %}
+                        <img src="{{ request.user.freelancer.profile_image.url }}" alt="Profile" class="w-8 h-8 rounded-full object-cover">
+                    {% else %}
+                        <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                            <i class="fa-regular fa-circle-user text-gray-400"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </button>
+        </div>
+    </nav>
+    
+    <!-- Mobile Dropdown (for medium screens) -->
+    <div class="lg:hidden hidden absolute top-14 left-0 right-0 bg-white shadow-md z-10 p-3 border-b border-gray-100" id="mobile-dropdown">
+        <div class="flex flex-col space-y-3">
+            {% if user.is_authenticated %}
+            <a href="{% url 'dashboard:dashboard' %}" class="flex items-center py-2 {% if request.resolver_match.view_name == 'dashboard:dashboard' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-rectangle-list w-6 text-center {% if request.resolver_match.view_name == 'dashboard:dashboard' %}text-green-600{% endif %}"></i>
+                <span class="ml-3 text-sm">My Jobs</span>
+            </a>
+            {% if request.user.freelancer %}
+            <a href="{% url 'freelancer:edit' pk=request.user.freelancer.id %}" class="flex items-center py-2 {% if request.resolver_match.view_name == 'freelancer:edit' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-circle-user w-6 text-center {% if request.resolver_match.view_name == 'freelancer:edit' %}text-green-600{% endif %}"></i>
+                <span class="ml-3 text-sm">Edit Profile</span>
+            </a>
+            {% else %}
+            <a href="{% url 'freelancer:new' %}" class="flex items-center py-2 {% if request.resolver_match.view_name == 'freelancer:new' %}text-green-600{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                <i class="fa-regular fa-circle-user w-6 text-center {% if request.resolver_match.view_name == 'freelancer:new' %}text-green-600{% endif %}"></i>
+                <span class="ml-3 text-sm">Create Profile</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'accounts:log_out' %}" class="flex items-center py-2 text-gray-600 hover:text-gray-900">
+                <i class="fas fa-sign-out-alt w-6 text-center"></i>
+                <span class="ml-3 text-sm">Logout</span>
+            </a>
+            {% else %}
+            <a href="{% url 'accounts:sign_up' %}" class="flex items-center py-2 text-gray-600 hover:text-gray-900">
+                <i class="fa-solid fa-user-plus w-6 text-center"></i>
+                <span class="ml-3 text-sm">Sign Up</span>
+            </a>
+            <a href="{% url 'accounts:log_in' %}" class="flex items-center py-2 text-gray-600 hover:text-gray-900">
+                <i class="fa-solid fa-right-to-bracket w-6 text-center"></i>
+                <span class="ml-3 text-sm">Log In</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Messages -->
+    {% for message in messages %}
+    <div class="fixed top-20 left-0 right-0 z-50 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-md shadow-lg">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-green-700">{{ message }}</p>
+                    </div>
+                    <div class="ml-auto pl-3">
+                        <div class="-mx-1.5 -my-1.5">
+                            <button type="button" class="inline-flex rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50" onclick="this.parentElement.parentElement.parentElement.parentElement.remove()">
+                                <span class="sr-only">Dismiss</span>
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div id="content-wrapper" class="pb-16 lg:pb-0 min-h-[calc(100vh-64px)]">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    {% block footer %}
+    <div class="w-full text-center text-xs text-gray-500 py-4 mb-20 lg:mb-0">
+        Copyright &copy; 2025-2029 <b>Your Platform</b><br>Need help? Contact <a href="mailto:support@example.com" class="underline">support@example.com</a> or call <a href="tel:+1234567890" class="underline">+1 (234) 567-890</a>
+    </div>
+    {% endblock %}
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-[9999]">
+        <div class="flex justify-around items-center py-2">
+            <a href="/" class="flex flex-col items-center {% if request.path == '/' %}text-green-600{% else %}text-gray-600{% endif %}">
+                <i class="fa-regular fa-building text-lg {% if request.path == '/' %}text-green-600{% endif %}"></i>
+                <span class="text-xs mt-1">Home</span>
+            </a>
+            {% if user.is_authenticated %}
+            <a href="{% url 'freelancer:freelancers' %}" class="flex flex-col items-center {% if request.resolver_match.view_name == 'freelancer:freelancers' %}text-green-600{% else %}text-gray-600{% endif %}">
+                <i class="fas fa-search text-lg {% if request.resolver_match.view_name == 'freelancer:freelancers' %}text-green-600{% endif %}"></i>
+                <span class="text-xs mt-1">Freelancers</span>
+            </a>
+            <a href="{% url 'job:new' %}" class="flex flex-col items-center {% if request.resolver_match.view_name == 'job:new' %}text-green-600{% else %}text-gray-600{% endif %}">
+                <i class="fa-regular fa-square-plus text-lg {% if request.resolver_match.view_name == 'job:new' %}text-green-600{% endif %}"></i>
+                <span class="text-xs mt-1">New Job</span>
+            </a>
+            <a href="{% url 'job:jobs' %}" class="flex flex-col items-center {% if request.resolver_match.view_name == 'job:jobs' %}text-green-600{% else %}text-gray-600{% endif %}">
+                <i class="fa-solid fa-briefcase text-lg {% if request.resolver_match.view_name == 'job:jobs' %}text-green-600{% endif %}"></i>
+                <span class="text-xs mt-1">Jobs</span>
+            </a>
+            <a href="{% url 'conversation:inbox' %}" class="relative flex flex-col items-center {% if request.resolver_match.view_name == 'conversation:inbox' %}text-green-600{% else %}text-gray-600{% endif %}">
+                <i class="fa-regular fa-message text-lg {% if request.resolver_match.view_name == 'conversation:inbox' %}text-green-600{% endif %}"></i>
+                {% if total_unread > 0 %}
+                    <span class="absolute top-0 right-2 bg-green-100 text-green-800 text-xs font-medium px-1.5 py-0.5 rounded-full leading-none">
+                        {{ total_unread }}
+                    </span>
+                {% endif %}
+                <span class="text-xs mt-1">Conversations</span>
+            </a>
+            {% else %}
+            <a href="{% url 'accounts:sign_up' %}" class="flex flex-col items-center {% if request.resolver_match.view_name == 'accounts:sign_up' %}text-green-600{% else %}text-gray-600{% endif %}">
+                <i class="fa-solid fa-user-plus text-lg {% if request.resolver_match.view_name == 'accounts:sign_up' %}text-green-600{% endif %}"></i>
+                <span class="text-xs mt-1">Sign Up</span>
+            </a>
+            <a href="{% url 'accounts:log_in' %}" class="flex flex-col items-center {% if request.resolver_match.view_name == 'accounts:log_in' %}text-green-600{% else %}text-gray-600{% endif %}">
+                <i class="fa-solid fa-right-to-bracket text-lg {% if request.resolver_match.view_name == 'accounts:log_in' %}text-green-600{% endif %}"></i>
+                <span class="text-xs mt-1">Log In</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        // Toggle mobile dropdown
+        document.getElementById('mobile-menu-button')?.addEventListener('click', function() {
+            const mobileDropdown = document.getElementById('mobile-dropdown');
+            mobileDropdown.classList.toggle('hidden');
+        });
+    
+        // Close mobile dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const mobileDropdown = document.getElementById('mobile-dropdown');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            
+            if (mobileDropdown && mobileMenuButton && 
+                !mobileDropdown.contains(event.target) && 
+                !mobileMenuButton.contains(event.target) && 
+                !mobileDropdown.classList.contains('hidden')) {
+                mobileDropdown.classList.add('hidden');
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+
+    <script>
+    // Scroll focused input/textarea into view on mobile devices
+    (function() {
+      function isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      }
+      if (!isMobile()) return;
+      document.addEventListener('focusin', function(e) {
+        if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+          setTimeout(function() {
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300); // Wait for keyboard animation
+        }
+      });
+    })();
+    </script>
+</body>
+</html>

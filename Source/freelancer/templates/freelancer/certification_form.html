@@ -1,0 +1,98 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}{% if form.instance.pk %}Edit Certification{% else %}Add Certification{% endif %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Form Header -->
+            <div class="px-6 py-8 border-b border-gray-100">
+                <h1 class="text-3xl font-bold text-gray-900">{% if form.instance.pk %}Edit Certification{% else %}Add Certification{% endif %}</h1>
+                <p class="mt-2 text-sm text-gray-600">Add or update your professional certifications.</p>
+            </div>
+
+            <!-- Form Content -->
+            <form method="post" class="divide-y divide-gray-100">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                    {% for error in form.non_field_errors %}
+                        <p class="text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="p-6">
+                    <div class="space-y-6">
+                        <!-- Certification Name -->
+                        <div>
+                            <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">Certification Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.name.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Issuing Organization -->
+                        <div>
+                            <label for="{{ form.issuing_organization.id_for_label }}" class="block text-sm font-medium text-gray-700">Issuing Organization</label>
+                            {{ form.issuing_organization }}
+                            {% if form.issuing_organization.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.issuing_organization.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                            <div>
+                                <label for="{{ form.issue_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Issue Date</label>
+                                {{ form.issue_date }}
+                                {% if form.issue_date.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.issue_date.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <label for="{{ form.expiry_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Expiry Date</label>
+                                {{ form.expiry_date }}
+                                {% if form.expiry_date.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.expiry_date.errors }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Credential ID -->
+                        <div>
+                            <label for="{{ form.credential_id.id_for_label }}" class="block text-sm font-medium text-gray-700">Credential ID</label>
+                            {{ form.credential_id }}
+                            {% if form.credential_id.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.credential_id.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Credential URL -->
+                        <div>
+                            <label for="{{ form.credential_url.id_for_label }}" class="block text-sm font-medium text-gray-700">Credential URL</label>
+                            {{ form.credential_url }}
+                            {% if form.credential_url.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.credential_url.errors }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <a href="{% url 'freelancer:detail' pk=freelancer.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Cancel
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        {% if form.instance.pk %}Save Changes{% else %}Add Certification{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

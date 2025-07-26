@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ freelancer.fullname }} - QR Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .qr-code {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            margin: 0 auto 1.5rem;
+        }
+
+        .name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+
+        .category {
+            font-size: 1rem;
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+        }
+
+        .scan-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+
+        .website {
+            font-size: 0.875rem;
+            color: #059669;
+            font-weight: 500;
+        }
+
+        .download-button {
+            display: inline-block;
+            background: #059669;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 500;
+            margin-top: 1.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .download-button:hover {
+            background: #047857;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="{{ qr_code_url }}" alt="QR Code" class="qr-code">
+        <h1 class="name">{{ freelancer.fullname }}</h1>
+        <div class="category">{{ freelancer.category.name }}</div>
+        <div class="scan-text">Scan to view profile</div>
+        <div class="website">Kormo.io</div>
+        <a href="?download=true" class="download-button">Download QR Code</a>
+    </div>
+</body>
+</html> 

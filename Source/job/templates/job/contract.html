@@ -1,0 +1,292 @@
+{% extends 'layouts/default/base.html' %}
+{% load static %}
+
+{% block title %}Contract - {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <!-- Success Animation Container -->
+        <div id="successAnimation" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
+            <dotlottie-player src="https://lottie.host/e2b13376-9979-4525-8adb-5986212c76ec/HsM5paGSmI.lottie" background="transparent" speed="1" style="width: 300px; height: 300px" loop autoplay></dotlottie-player>
+        </div>
+
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-900">Contract Agreement</h1>
+            <a href="{% url 'job:detail' job.id %}" class="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                <i class="fas fa-arrow-left mr-1"></i>Job Details
+            </a>
+        </div>
+        
+        <div class="mb-8">
+            <h2 class="text-lg font-medium text-gray-900 mb-2">Project Details</h2>
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <p class="text-gray-600"><strong>Job Title:</strong> {{ job.title }}</p>
+                <p class="text-gray-600"><strong>Client:</strong> {% if job.created_by.freelancer %}{{ job.created_by.freelancer.fullname }}{% else %}{{ job.created_by.username }}{% endif %}</p>
+                <p class="text-gray-600"><strong>Freelancer:</strong> {% if freelancer.freelancer %}{{ freelancer.freelancer.fullname }}{% else %}{{ freelancer.username }}{% endif %}</p>
+                {% if is_client and job.created_by.freelancer.bkash_account %}
+                <p class="text-gray-600"><strong>bKash Account (Client):</strong> {{ job.created_by.freelancer.bkash_account }}</p>
+                {% elif not is_client and freelancer.freelancer.bkash_account %}
+                <p class="text-gray-600"><strong>bKash Account (Freelancer):</strong> {{ freelancer.freelancer.bkash_account }}</p>
+                {% endif %}
+                <p class="text-gray-600"><strong>Deadline:</strong> {{ job.deadline|default:'N/A' }} days</p>
+            </div>
+        </div>
+
+        {% if not download_mode %}
+            <form method="post" class="space-y-6" id="contractForm">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if bkash_required_error %}
+                    <div class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+                        <p>{{ bkash_required_error }}</p>
+                        <p class="mt-2">
+                            {% if freelancer.freelancer %}
+                                <a href="{% url 'freelancer:edit' freelancer.freelancer.pk %}" class="text-red-600 hover:text-red-800 underline">
+                                    Click here to add your bKash account number
+                                </a>
+                            {% else %}
+                                <a href="{% url 'freelancer:edit' freelancer.pk %}" class="text-red-600 hover:text-red-800 underline">
+                                    Click here to add your bKash account number
+                                </a>
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endif %}
+
+                {% if is_client %}
+                    <div class="space-y-4">
+                        <div>
+                            <label for="{{ form.amount.id_for_label }}" class="block text-sm font-medium text-gray-700">Contract Amount (৳)</label>
+                            {{ form.amount }}
+                            {% if form.amount.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.amount.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+                <div class="bg-gray-50 p-4 rounded-lg mt-4">
+                    {% if contract.client_signature %}
+                        <p class="text-gray-600"><strong>Contract Amount:</strong> ৳{{ contract.amount|floatformat:0 }}</p>
+                        <p class="text-gray-600 mt-2"><strong>Platform Fee (15%):</strong> ৳{% widthratio contract.amount 100 15 %}</p>
+                        <p class="text-gray-600 mt-2"><strong>Freelancer Earns (85%):</strong> ৳{% widthratio contract.amount 100 85 %}</p>
+                        <p class="text-gray-600 mt-2"><strong>bKash Fee (1.85%):</strong> ৳{% widthratio contract.amount 10000 185 %}</p>
+                        <p class="text-gray-600 mt-2"><strong>Client Total Payment:</strong> ৳{{ contract.amount|floatformat:0 }} + ৳{% widthratio contract.amount 10000 185 %} = ৳{% widthratio contract.amount 10000 10185 %}</p>
+                    {% else %}
+                        <p class="text-gray-600"><strong>Fee Structure:</strong></p>
+                        <p class="text-gray-600 mt-2">• Platform Fee: 15% of contract amount</p>
+                        <p class="text-gray-600 mt-2">• Freelancer Earns: 85% of contract amount</p>
+                        <p class="text-gray-600 mt-2">• bKash Fee: 1.85% of contract amount (charged to client)</p>
+                        <p class="text-gray-600 mt-2">• Client Total Payment: Contract amount + 1.85% bKash fee</p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Contract Terms</label>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-600 mb-4">
+                                This contract agreement ("Agreement") is made between {% if job.created_by.freelancer %}{{ job.created_by.freelancer.fullname }}{% else %}{{ job.created_by.username }}{% endif %} ("Client") and {% if freelancer.freelancer %}{{ freelancer.freelancer.fullname }}{% else %}{{ freelancer.username }}{% endif %} ("Freelancer") for the project titled "{{ job.title }}".
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>1. Scope of Work:</strong><br>
+                                The Freelancer agrees to perform the services as described in the job posting and proposal.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>2. Payment Terms:</strong><br>
+                                2.1 Total Fee. The Client agrees to pay a total fee of ৳{{ contract.amount|floatformat:0 }} ("Fees") for the Services.<br>
+                                2.2 Deposit. Before any work begins, the Client shall deposit the full Fees into the Platform's escrow account.<br>
+                                2.3 Release & Payment. Upon the Client's written acceptance of the final deliverables, the Platform will release 85% of the Fees to the Freelancer within five (5) business days.<br>
+                                2.4 Platform Service Fee. The Platform will retain 15% of the Fees as its service fee.<br>
+                                2.5 bKash Processing Fee. A 1.85% bKash processing fee will be charged to the Client on the total contract amount. This fee is separate from the platform service fee. It will be divided between the freelancer on their share and the platform on its share.<br>
+                                2.6 Dispute or Termination. If this Agreement is terminated or a payment dispute arises, the Platform's escrow and dispute-resolution policies shall govern the release or refund of all or part of the Fees.<br>
+                                2.7 Payment Accounts. The following bKash accounts will be used for payments:<br>
+                                {% if is_client %}
+                                &nbsp;&nbsp;&nbsp;&nbsp;- <strong>bKash Account (Client):</strong> {{ job.created_by.freelancer.bkash_account|default:"Not provided" }}<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;- <strong>bKash Account (Freelancer):</strong> [Protected]<br>
+                                {% else %}
+                                &nbsp;&nbsp;&nbsp;&nbsp;- <strong>bKash Account (Client):</strong> [Protected]<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;- <strong>bKash Account (Freelancer):</strong> {{ freelancer.freelancer.bkash_account|default:"Not provided" }}<br>
+                                {% endif %}
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>3. Timeline:</strong><br>
+                                The Freelancer agrees to complete the work within {{ job.deadline|default:'N/A' }} days as specified in the job posting and proposal.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>4. Deliverables:</strong><br>
+                                The Freelancer agrees to deliver all work products and materials as specified in the job posting and proposal.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>5. Intellectual Property:</strong><br>
+                                Upon full payment, the Client will own all rights to the work products created under this Agreement.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>6. Confidentiality:</strong><br>
+                                Both parties agree to maintain the confidentiality of any proprietary information shared during the project.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>7. Termination:</strong><br>
+                                Either party may terminate this Agreement with written notice if the other party breaches any material term of this Agreement.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>8. Dispute Resolution:</strong><br>
+                                Any disputes arising from this Agreement will be resolved through the Platform's dispute resolution process.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>9. Governing Law:</strong><br>
+                                This Agreement shall be governed by and construed in accordance with the laws of the jurisdiction where the Platform is based.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>10. Entire Agreement:</strong><br>
+                                This Agreement constitutes the entire understanding between the parties regarding the subject matter.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>11. Amendments:</strong><br>
+                                Any amendments to this Agreement must be made in writing and signed by both parties.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>12. Independent Contractor:</strong><br>
+                                The Freelancer is an independent contractor and not an employee of the Client.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>13. No Assignment:</strong><br>
+                                Neither party may assign this Agreement without the written consent of the other party.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>14. Force Majeure:</strong><br>
+                                Neither party shall be liable for any failure or delay in performance due to circumstances beyond their reasonable control.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>15. Notices:</strong><br>
+                                All notices under this Agreement shall be in writing and delivered through the Platform.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>16. Severability:</strong><br>
+                                If any provision of this Agreement is held invalid or unenforceable, the remaining provisions will remain in full force and effect.
+                            </p>
+
+                            <p class="text-gray-600 mb-4">
+                                <strong>17. Platform Responsibility and Off-Platform Activities:</strong><br>
+                                The Platform (Kormo) is not responsible for any fraud, disputes, or complaints arising from activities conducted outside the Platform, including but not limited to conversations, work submissions, payments, or agreements. Users must conduct all business through the Platform's official systems. The Platform reserves the right to terminate accounts and take legal action against users who violate these terms.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="{{ form.signature.id_for_label }}" class="block text-sm font-medium text-gray-700">Digital Signature</label>
+                        {{ form.signature }}
+                        {% if form.signature.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {% for error in form.signature.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <p class="mt-1 text-sm text-gray-500">Type "I fully agree to the legal contract presented" to sign</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <a href="{% url 'job:download_contract' job.id freelancer.id %}" class="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors" target="_blank">
+                        <i class="fas fa-download mr-1"></i>Download
+                    </a>
+                    {% if is_client %}
+                        {% if not contract.client_signature %}
+                            {% if not job.created_by.freelancer.bkash_account %}
+                            <div class="text-red-600 bg-red-50 border border-red-200 px-3 py-2 mb-2 text-sm">
+                                <strong>Before signing, please add your bKash account number in your profile.</strong>
+                            </div>
+                            {% endif %}
+                            <button type="submit" id="signContractBtn" class="px-6 py-3 bg-green-50 text-green-800 rounded-lg hover:bg-green-100 transition-colors" {% if not job.created_by.freelancer.bkash_account %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}>
+                                <span class="button-text">Sign Contract</span>
+                                <span class="loading-text hidden">
+                                    <img src="{% static 'loading.gif' %}" alt="Loading..." class="w-5 h-5 inline-block"> Signing...
+                                </span>
+                            </button>
+                        {% else %}
+                            <span class="px-6 py-3 bg-green-100 text-green-700 rounded-lg">
+                                <i class="fas fa-check-circle mr-1"></i>Contract Signed
+                            </span>
+                        {% endif %}
+                    {% else %}
+                        {% if contract.status == 'client_signed' %}
+                            {% if not freelancer.freelancer.bkash_account %}
+                            <div class="text-red-600 bg-red-50 border border-red-200 px-3 py-2 mb-2 text-sm">
+                                <strong>Before signing, please add your bKash account number in your profile.</strong>
+                            </div>
+                            {% endif %}
+                            <button type="submit" id="signContractBtn" class="px-6 py-3 bg-green-50 text-green-800 rounded-lg hover:bg-green-100 transition-colors" {% if not freelancer.freelancer.bkash_account %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}>
+                                <span class="button-text">Sign Contract</span>
+                                <span class="loading-text hidden">
+                                    <img src="{% static 'loading.gif' %}" alt="Loading..." class="w-5 h-5 inline-block"> Signing...
+                                </span>
+                            </button>
+                        {% elif contract.status == 'freelancer_signed' %}
+                            <span class="px-6 py-3 bg-green-100 text-green-700 rounded-lg">
+                                <i class="fas fa-check-circle mr-1"></i> Contract Signed
+                            </span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('contractForm');
+    const signButton = document.getElementById('signContractBtn');
+    const successAnimation = document.getElementById('successAnimation');
+    
+    if (form && signButton) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+            
+            const buttonText = signButton.querySelector('.button-text');
+            const loadingText = signButton.querySelector('.loading-text');
+            
+            if (buttonText && loadingText) {
+                buttonText.classList.add('hidden');
+                loadingText.classList.remove('hidden');
+                signButton.disabled = true;
+            }
+
+            // Show success animation
+            successAnimation.classList.remove('hidden');
+            
+            // Submit the form after a short delay
+            setTimeout(() => {
+                form.submit();
+            }, 2000);
+        });
+    }
+});
+</script>
+{% endblock %} 

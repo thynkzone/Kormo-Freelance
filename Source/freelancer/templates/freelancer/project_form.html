@@ -1,0 +1,260 @@
+{% extends 'layouts/default/base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Edit Project{% else %}Add Project{% endif %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Form Header -->
+            <div class="px-6 py-8 border-b border-gray-100">
+                <h1 class="text-3xl font-bold text-gray-900">{% if form.instance.pk %}Edit Project{% else %}Add Project{% endif %}</h1>
+                <p class="mt-2 text-sm text-gray-600">Add or update your portfolio projects.</p>
+            </div>
+
+            <!-- Form Content -->
+            <form method="post" enctype="multipart/form-data" class="divide-y divide-gray-100">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                    {% for error in form.non_field_errors %}
+                        <p class="text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="p-6">
+                    <div class="space-y-6">
+                        <!-- Project Title -->
+                        <div>
+                            <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700">Project Title</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.title.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Project Description -->
+                        <div>
+                            <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Project Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.description.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Project URL -->
+                        <div>
+                            <label for="{{ form.url.id_for_label }}" class="block text-sm font-medium text-gray-700">Project URL</label>
+                            {{ form.url }}
+                            {% if form.url.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.url.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Project Image -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Project Image</label>
+                            <div class="mt-1">
+                                <div class="flex items-center space-x-6">
+                                    <div class="flex-1">
+                                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors duration-200">
+                                            <div class="space-y-3">
+                                                <div class="flex flex-col items-center space-y-2">
+                                                    <label for="{{ form.image.id_for_label }}" class="cursor-pointer">
+                                                        <span class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-600 bg-green-50 hover:bg-green-100">
+                                                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                            Upload a file
+                                                        </span>
+                                                        <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}" class="hidden">
+                                                    </label>
+                                                    <p class="text-sm text-gray-500">or drag and drop</p>
+                                                </div>
+                                                <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="w-48">
+                                        <div class="aspect-w-16 aspect-h-9 bg-gray-100 rounded-lg overflow-hidden shadow-sm">
+                                            <img id="project-image-preview" src="{% if form.instance.image %}{{ form.instance.image.url }}{% else %}data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='24' height='24' fill='%23F3F4F6'/%3E%3Cpath d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E{% endif %}" alt="Project" class="object-cover w-full h-full">
+                                        </div>
+                                        <div class="mt-2 flex justify-end">
+                                            <button type="button" id="remove-project-image" class="{% if not form.instance.image %}hidden{% endif %} inline-flex items-center px-3 py-1 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Remove
+                                            </button>
+                                            <input type="hidden" name="image-clear" id="image-clear" value="false">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if form.image.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.image.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                            <div>
+                                <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Start Date</label>
+                                {{ form.start_date }}
+                                {% if form.start_date.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.start_date.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-700">End Date</label>
+                                {{ form.end_date }}
+                                {% if form.end_date.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.end_date.errors }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Current Project -->
+                        <div>
+                            <label class="inline-flex items-center">
+                                {{ form.current }}
+                                <span class="ml-2 text-sm text-gray-600">This is an ongoing project</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <a href="{% url 'freelancer:detail' pk=freelancer.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Cancel
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        {% if form.instance.pk %}Save Changes{% else %}Add Project{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Show/hide end date based on current checkbox
+    document.getElementById('{{ form.current.id_for_label }}').addEventListener('change', function() {
+        const endDateField = document.getElementById('{{ form.end_date.id_for_label }}').parentElement;
+        if (this.checked) {
+            endDateField.style.display = 'none';
+        } else {
+            endDateField.style.display = 'block';
+        }
+    });
+
+    // Image upload preview functionality
+    const projectImageInput = document.getElementById('{{ form.image.id_for_label }}');
+    const projectImagePreview = document.getElementById('project-image-preview');
+    const removeProjectImageButton = document.getElementById('remove-project-image');
+    const dropZone = document.querySelector('.border-dashed');
+
+    function updateImagePreview(file) {
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (projectImagePreview) {
+                    projectImagePreview.src = e.target.result;
+                    projectImagePreview.classList.remove('hidden');
+                    // Show remove button if it exists
+                    if (removeProjectImageButton) {
+                        removeProjectImageButton.classList.remove('hidden');
+                    }
+                    // Add uploaded class to drop zone
+                    if (dropZone) {
+                        dropZone.classList.add('file-uploaded');
+                    }
+                }
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    if (projectImageInput) {
+        // Handle file selection
+        projectImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            updateImagePreview(file);
+        });
+
+        // Handle drag and drop
+        if (dropZone) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight(e) {
+                dropZone.classList.add('border-green-500', 'bg-green-50');
+            }
+
+            function unhighlight(e) {
+                dropZone.classList.remove('border-green-500', 'bg-green-50');
+            }
+
+            dropZone.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    projectImageInput.files = dt.files;
+                    updateImagePreview(file);
+                }
+            }
+        }
+    }
+
+    if (removeProjectImageButton) {
+        removeProjectImageButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (projectImageInput) {
+                projectImageInput.value = '';
+            }
+            if (projectImagePreview) {
+                projectImagePreview.classList.add('hidden');
+            }
+            if (removeProjectImageButton) {
+                removeProjectImageButton.classList.add('hidden');
+            }
+            if (dropZone) {
+                dropZone.classList.remove('file-uploaded');
+            }
+            // Set the image-clear flag to true
+            document.getElementById('image-clear').value = 'true';
+        });
+    }
+
+    // Initialize image preview if there's an existing image
+    if (projectImagePreview && projectImagePreview.src) {
+        projectImagePreview.classList.remove('hidden');
+        if (removeProjectImageButton) {
+            removeProjectImageButton.classList.remove('hidden');
+        }
+        if (dropZone) {
+            dropZone.classList.add('file-uploaded');
+        }
+    }
+</script>
+{% endblock %} 

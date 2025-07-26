@@ -1,0 +1,106 @@
+{% extends 'layouts/default/base.html' %}
+{% load tz %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden bg-gray-50">
+    <!-- Sidebar with Conversation List -->
+    <div class="w-full md:w-80 lg:w-96 bg-white border-r border-gray-200 flex flex-col h-full">
+        <!-- Search Bar -->
+        <div class="p-4 border-b border-gray-200 bg-white">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Search conversations" 
+                       class="w-full pl-10 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+        </div>
+
+        <!-- Conversation List -->
+        <div id="conversationList" class="overflow-y-auto flex-1">
+            {% for conversation in conversations %}
+                {% for member in conversation.members.all %}
+                    {% if member != request.user %}
+                        <a href="{% url 'conversation:detail' conversation.id %}" 
+                           class="block hover:bg-gray-50 border-b border-gray-100"
+                           data-username="{{ member.username }}"
+                           data-fullname="{% if member.freelancer %}{{ member.freelancer.fullname }}{% else %}{{ member.get_full_name|default:member.username }}{% endif %}"
+                           data-last-message="{{ conversation.last_message.content|default:'' }}">
+                            <div class="flex items-center p-4">
+                                {% if member.freelancer and member.freelancer.profile_image %}
+                                    <img src="{{ member.freelancer.profile_image.url }}" class="w-12 h-12 rounded-full mr-3 object-cover">
+                                {% else %}
+                                    <img src="https://ui-avatars.com/api/?name={{ member.get_full_name|default:member.username|urlencode }}&background=10B981&color=ffffff" class="w-12 h-12 rounded-full mr-3">
+                                {% endif %}
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <p class="font-medium text-gray-900">
+                                            {% if member.freelancer %}
+                                                {{ member.freelancer.fullname }}
+                                            {% else %}
+                                                {{ member.get_full_name|default:member.username }}
+                                            {% endif %}
+                                        </p>
+                                        <span class="text-xs text-gray-500 ml-2">{{ conversation.modified_at|localtime|date:"M d" }}</span>
+                                    </div>
+                                    <div class="flex items-center mt-1">
+                                        <p class="text-sm text-gray-600 truncate flex-1">
+                                            {% if conversation.last_message %}
+                                                {% if conversation.last_message.image %}
+                                                    <i class="fa-solid fa-image text-gray-400 mr-1"></i> Image
+                                                {% else %}
+                                                    {{ conversation.last_message.content|truncatechars:30 }}
+                                                {% endif %}
+                                            {% else %}
+                                                No messages yet
+                                            {% endif %}
+                                        </p>
+                                        {% if conversation.unread_count > 0 %}
+                                            <span class="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                {{ conversation.unread_count }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            {% empty %}
+                <div class="text-center p-8 text-gray-400">
+                    <i class="fa-regular fa-comments text-4xl mb-3"></i>
+                    <p>No conversations yet</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Placeholder -->
+    <div class="hidden md:flex flex-1 items-center justify-center h-full">
+        <div class="text-center text-gray-400">
+            <i class="fa-regular fa-comments text-5xl mb-4"></i>
+            <p class="text-lg">Select a conversation to start messaging</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const conversationList = document.getElementById('conversationList');
+        const conversationItems = conversationList.querySelectorAll('[data-username]');
+
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            conversationItems.forEach(item => {
+                const username = item.getAttribute('data-username').toLowerCase();
+                const fullname = item.getAttribute('data-fullname').toLowerCase();
+                const lastMessage = item.getAttribute('data-last-message').toLowerCase();
+                item.style.display = username.includes(searchTerm) || fullname.includes(searchTerm) || lastMessage.includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+    });
+</script>
+
+{% endblock %}

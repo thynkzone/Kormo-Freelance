@@ -1,0 +1,1458 @@
+{% extends "layouts/default/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ freelancer.fullname }}{% endblock %}
+
+{% block content %}
+<!-- Add CSRF token -->
+{% csrf_token %}
+
+<!-- Add Chart.js library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    .modal.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .modal-content {
+        background: white;
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+        border-radius: 12px;
+        transform: translateY(-20px);
+        transition: transform 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal.active .modal-content {
+        transform: translateY(0);
+    }
+
+    .close-modal {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6b7280;
+        transition: color 0.2s ease;
+        z-index: 10000;
+    }
+
+    .close-modal:hover {
+        color: #374151;
+    }
+
+    /* Mobile-specific styles */
+    @media (max-width: 640px) {
+        .modal-content {
+            width: 95%;
+            margin: 1rem auto;
+        }
+
+        .send-invitation-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        #inviteFreelancerBtn {
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+        }
+    }
+
+    /* Add styles for the radar chart container */
+    .ratings-chart-container {
+        width: 100%;
+        max-width: 400px;
+        height: 300px;
+        margin: 0 auto;
+        padding: 1rem;
+        position: relative;
+    }
+
+    .ratings-chart-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+</style>
+
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="md:col-span-2">
+            <!-- Profile Header -->
+            <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm mb-6">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-2xl font-bold text-gray-900">{{ freelancer.fullname }}</h1>
+                        </div>
+                        <p class="text-green-600 font-medium">{{ freelancer.category.name }}
+                            {% with sub=freelancer.get_current_subscription %}
+                                    {% if sub and sub.plan.name != 'free' and sub.status == 'active' %}
+                                        {% if sub.plan.name == 'member' %}
+                                            <span class="inline-flex items-center px-2 py-0.5 ml-2 rounded bg-blue-100 text-blue-800 text-xs font-semibold" title="Member Plan">
+                                                <i class="fas fa-gem mr-1"></i> Member
+                                            </span>
+                                        {% elif sub.plan.name == 'pro' %}
+                                            <span class="inline-flex items-center px-2 py-0.5 ml-2 rounded bg-purple-100 text-purple-800 text-xs font-semibold" title="Pro Plan">
+                                                <i class="fas fa-crown mr-1"></i> Pro
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endwith %}
+                        </p>
+                        {% if user.is_authenticated and freelancer.user != request.user %}
+                            <button type="button" class="report-btn text-gray-400 hover:text-red-600" data-type="freelancer" data-id="{{ freelancer.id }}" aria-label="Report Freelancer">
+                                <i class="fas fa-flag"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-green-600">৳{{ freelancer.hourly_rate|floatformat:0 }}/hr</p>
+                        <p class="text-sm text-gray-500">Hourly Rate</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons - Only visible on mobile -->
+                <div class="md:hidden mb-6">
+                    {% if freelancer.user == request.user %}
+                        <h2 class="text-lg font-medium mb-4">Manage Your Profile</h2>
+                        <a href="{% url 'freelancer:edit' freelancer.id %}" class="block w-full py-3.5 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-base">
+                            <i class="fas fa-edit mr-2"></i>Edit Profile
+                        </a>
+                    {% elif request.user.is_authenticated %}
+                        <h2 class="text-lg font-medium mb-4">Interested in hiring?</h2>
+                        <a href="{% url 'conversation:new' 'freelancer' freelancer.id %}" class="block w-full py-3.5 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-base">Contact Freelancer</a>
+                        <button id="inviteFreelancerBtn" class="block w-full py-3.5 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors mt-3 text-base">Invite to Job</button>
+                    {% else %}
+                        <h2 class="text-lg font-medium mb-4">Interested in hiring?</h2>
+                        <a href="{% url 'account_login' %}?next={{ request.path }}" class="block w-full py-3.5 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-base">Sign in to Contact</a>
+                    {% endif %}
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex space-x-4 border-b border-gray-200">
+                    <button class="tab-button active py-2 px-4 text-sm font-medium text-green-600 border-b-2 border-green-600" data-tab="freelancer-profile">
+                        Freelancer Profile
+                    </button>
+                    <button class="tab-button py-2 px-4 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="client-profile">
+                        Client Profile
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="freelancer-profile-tab" class="tab-content active">
+                <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+                    <!-- Profile Image -->
+                    <div class="relative w-full max-w-2xl mx-auto aspect-[4/3] rounded-lg overflow-hidden mb-6">
+                        {% if freelancer.profile_image %}
+                            <img src="{{ freelancer.profile_image.url }}" alt="{{ freelancer.fullname }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <img src="https://cdn.pixabay.com/photo/2021/07/02/04/48/user-6380868_1280.png" alt="{{ freelancer.fullname }}" class="w-full h-full object-cover">
+                        {% endif %}
+                    </div>
+
+                    <!-- Description -->
+                    {% if freelancer.description %}
+                    <div class="mb-6">
+                        <h2 class="text-lg font-medium text-green-700 mb-2">About</h2>
+                        <div class="prose max-w-none text-gray-700">
+                            {{ freelancer.description|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Skills -->
+                    {% if skills %}
+                    <div class="mb-6">
+                        <h2 class="text-lg font-medium text-green-700 mb-2">Skills</h2>
+                        <div class="flex flex-wrap gap-2">
+                            {% for skill in skills %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                    {{ skill.skill.name }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Experience -->
+                    {% if freelancer.experiences.all %}
+                    <div class="mb-6">
+                        <h2 class="text-lg font-medium text-green-700 mb-2">Work Experience</h2>
+                        <div class="space-y-4">
+                            {% for experience in freelancer.experiences.all %}
+                                <div class="border-l-4 border-green-500 pl-4">
+                                    <h3 class="font-medium text-gray-900">{{ experience.position }}</h3>
+                                    <p class="text-green-600">{{ experience.company }}</p>
+                                    <p class="text-sm text-gray-500">
+                                        {{ experience.start_date|date:"F Y" }} - 
+                                        {% if experience.current %}
+                                            Present
+                                        {% else %}
+                                            {{ experience.end_date|date:"F Y" }}
+                                        {% endif %}
+                                    </p>
+                                    {% if experience.description %}
+                                        <p class="mt-2 text-gray-600">{{ experience.description }}</p>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Education -->
+                    {% if freelancer.education.all %}
+                    <div class="mb-6">
+                        <h2 class="text-lg font-medium text-green-700 mb-2">Education</h2>
+                        <div class="space-y-4">
+                            {% for edu in freelancer.education.all %}
+                                <div class="border-l-4 border-green-500 pl-4">
+                                    <h3 class="font-medium text-gray-900">{{ edu.degree }}</h3>
+                                    <p class="text-green-600">{{ edu.institution }}</p>
+                                    <p class="text-sm text-gray-500">
+                                        {{ edu.start_date|date:"F Y" }} - 
+                                        {% if edu.current %}
+                                            Present
+                                        {% else %}
+                                            {{ edu.end_date|date:"F Y" }}
+                                        {% endif %}
+                                    </p>
+                                    {% if edu.description %}
+                                        <p class="mt-2 text-gray-600">{{ edu.description }}</p>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Certifications -->
+                    {% if freelancer.certifications.all %}
+                    <div class="mb-6">
+                        <h2 class="text-lg font-medium text-green-700 mb-2">Certifications</h2>
+                        <div class="space-y-4">
+                            {% for cert in freelancer.certifications.all %}
+                                <div class="border-l-4 border-green-500 pl-4">
+                                    <h3 class="font-medium text-gray-900">{{ cert.name }}</h3>
+                                    <p class="text-green-600">{{ cert.issuing_organization }}</p>
+                                    <p class="text-sm text-gray-500">
+                                        Issued: {{ cert.issue_date|date:"F Y" }}
+                                        {% if cert.expiry_date %}
+                                            • Expires: {{ cert.expiry_date|date:"F Y" }}
+                                        {% endif %}
+                                    </p>
+                                    {% if cert.credential_id %}
+                                        <p class="text-sm text-gray-500">Credential ID: {{ cert.credential_id }}</p>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Projects -->
+                    {% if freelancer.projects.all %}
+                    <div class="mb-6">
+                        <h2 class="text-lg font-medium text-green-700 mb-2">Portfolio Projects</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {% for project in freelancer.projects.all %}
+                                <div class="border border-gray-100 rounded-lg overflow-hidden hover:border-green-200 transition-colors">
+                                    {% if project.image %}
+                                        <img src="{{ project.image.url }}" class="w-full h-48 object-cover" alt="{{ project.title }}">
+                                    {% endif %}
+                                    <div class="p-4">
+                                        <h3 class="font-medium text-gray-900">{{ project.title }}</h3>
+                                        <p class="text-sm text-gray-500">
+                                            {{ project.start_date|date:"F Y" }} - 
+                                            {% if project.current %}
+                                                Present
+                                            {% else %}
+                                                {{ project.end_date|date:"F Y" }}
+                                            {% endif %}
+                                        </p>
+                                        <p class="mt-2 text-sm text-gray-600">{{ project.description|truncatewords:20 }}</p>
+                                        {% if project.url %}
+                                            <a href="{{ project.url }}" target="_blank" class="text-sm text-green-600 hover:text-green-700 mt-2 inline-block">
+                                                <i class="fas fa-external-link-alt mr-1"></i>View Project
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Freelancer Reviews Section -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-medium">Freelancer Reviews</h2>
+                            <div class="flex space-x-4">
+                                <span class="text-sm text-gray-500">Completed Jobs: {{ completed_hired_jobs }}</span>
+                                <span class="text-sm text-gray-500">In Progress: {{ in_progress_hired_jobs }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Average Ratings -->
+                        <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-medium mb-2">Average Ratings</h3>
+                            
+                            <!-- Add radar chart container -->
+                            <div class="ratings-chart-container">
+                                <canvas id="ratingsRadarChart" 
+                                    data-ratings='{
+                                        "rating": {{ freelancer_avg_rating.avg_rating|default:"0" }},
+                                        "knowledge": {{ freelancer_avg_rating.avg_knowledge|default:"0" }},
+                                        "turnaround": {{ freelancer_avg_rating.avg_turnaround|default:"0" }},
+                                        "revisions": {{ freelancer_avg_rating.avg_revisions|default:"0" }},
+                                        "quality": {{ freelancer_avg_rating.avg_quality|default:"0" }},
+                                        "responsiveness": {{ freelancer_avg_rating.avg_responsiveness|default:"0" }}
+                                    }'>
+                                </canvas>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mt-2">
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Overall Rating</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_avg_rating.avg_rating|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ freelancer_avg_rating.avg_rating|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Knowledge Depth</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_avg_rating.avg_knowledge|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ freelancer_avg_rating.avg_knowledge|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Fast Turnaround</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_avg_rating.avg_turnaround|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ freelancer_avg_rating.avg_turnaround|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Multiple Revisions</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_avg_rating.avg_revisions|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ freelancer_avg_rating.avg_revisions|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Quality of Work</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_avg_rating.avg_quality|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ freelancer_avg_rating.avg_quality|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Responsiveness</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_avg_rating.avg_responsiveness|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ freelancer_avg_rating.avg_responsiveness|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Individual Reviews -->
+                        {% if freelancer_reviews %}
+                            <div class="space-y-4 mt-6">
+                                {% for review in freelancer_reviews %}
+                                    <div class="border border-gray-100 rounded-lg p-4">
+                                        <!-- Job Information -->
+                                        <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+                                            <h3 class="font-medium text-lg mb-2">
+                                                <a href="{% url 'job:detail' review.job.id %}" class="text-green-600 hover:text-green-700">
+                                                    {{ review.job.title }}
+                                                </a>
+                                            </h3>
+                                            <div class="flex items-center text-sm text-gray-600">
+                                                <span class="mr-4">Budget: ৳{{ review.job.budget }}</span>
+                                                <span>Completed: {{ review.job.completion_date|date:"F Y" }}</span>
+                                                <span class="ml-4">
+                                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                            {% for i in "12345" %}
+                                                                {% if forloop.counter <= review.rating %}
+                                                                    <i class="fas fa-star text-sm"></i>
+                                                                {% else %}
+                                                                    <i class="far fa-star text-sm"></i>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.rating|floatformat:1 }}/5</span>
+                                                    </div>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Reviewer Info -->
+                                        <div class="flex items-center mb-2">
+                                            <div class="flex items-center">
+                                                {% if review.reviewer.freelancer and review.reviewer.freelancer.profile_image %}
+                                                    <img src="{{ review.reviewer.freelancer.profile_image.url }}" class="w-10 h-10 rounded-full mr-3">
+                                                    <div>
+                                                        <a href="{% url 'freelancer:detail' review.reviewer.freelancer.id %}" class="font-medium hover:text-green-600">{{ review.reviewer.freelancer.fullname }}</a>
+                                                        <p class="text-sm text-gray-500">{{ review.created_at|date:"F j, Y" }}</p>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="w-10 h-10 rounded-full mr-3 bg-gray-200 flex items-center justify-center">
+                                                        <i class="fas fa-user text-gray-400"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="font-medium">{% if review.reviewer.freelancer %}<a href="{% url 'freelancer:detail' review.reviewer.freelancer.id %}" class="hover:text-green-600">{{ review.reviewer.freelancer.fullname }}</a>{% else %}{{ review.reviewer.username }} (Client){% endif %}</p>
+                                                        <p class="text-sm text-gray-500">{{ review.created_at|date:"F j, Y" }}</p>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-2 gap-4 mb-3">
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Knowledge Depth</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.knowledge_depth %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.knowledge_depth }}/5</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Fast Turnaround</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.fast_turnaround %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.fast_turnaround }}/5</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Multiple Revisions</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.multiple_revisions %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.multiple_revisions }}/5</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Quality of Work</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.quality_of_work %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.quality_of_work }}/5</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Responsiveness</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.responsiveness %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.responsiveness }}/5</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <p class="text-gray-700">{{ review.content }}</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-gray-500 mt-6">No freelancer reviews yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Profile Tab Content -->
+            <div id="client-profile-tab" class="tab-content hidden">
+                <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+                    <!-- Posted Jobs Section -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-medium">Posted Jobs ({{ freelancer.user.posted_jobs.all|length }})</h2>
+                        </div>
+                        {% if freelancer.user.posted_jobs.all %}
+                            <div class="space-y-4">
+                                {% for job in freelancer.user.posted_jobs.all %}
+                                    <div class="border border-gray-100 rounded-lg p-4">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h3 class="font-medium">
+                                                    <a href="{% url 'job:detail' job.id %}" class="text-green-600 hover:text-green-700">
+                                                        {{ job.title }}
+                                                    </a>
+                                                </h3>
+                                                <p class="text-sm text-gray-500 mt-1">
+                                                    Posted on {{ job.created_at|date:"F j, Y" }}
+                                                </p>
+                                                <div class="flex flex-wrap gap-2 mt-2">
+                                                    {% for skill in job.skills.all %}
+                                                        <span class="bg-gray-100 px-3 py-1 rounded-full text-sm">
+                                                            {{ skill.name }}
+                                                        </span>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="text-green-600 font-medium">৳{{ job.budget }}</span>
+                                                <p class="text-sm text-gray-500">
+                                                    {% if job.completion_date %}
+                                                        Completed: {{ job.completion_date|date:"F Y" }}
+                                                    {% else %}
+                                                        In Progress
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-gray-500">No jobs posted yet.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Client Reviews Section -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-medium">Client Reviews ({{ client_reviews|length }})</h2>
+                        </div>
+
+                        <!-- Client Average Ratings -->
+                        {% if client_reviews %}
+                        <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-medium mb-3">Average Ratings</h3>
+                            <!-- Add radar chart container -->
+                            <div class="ratings-chart-container">
+                                <canvas id="clientRatingsRadarChart" 
+                                    data-ratings='{
+                                        "rating": {{ client_avg_rating.avg_rating|default:"0" }},
+                                        "communication": {{ client_avg_rating.avg_communication|default:"0" }},
+                                        "timely_replies": {{ client_avg_rating.avg_timely_replies|default:"0" }},
+                                        "requirements": {{ client_avg_rating.avg_requirements|default:"0" }},
+                                        "feedback": {{ client_avg_rating.avg_feedback|default:"0" }},
+                                        "revisions": {{ client_avg_rating.avg_revisions|default:"0" }}
+                                    }'>
+                                </canvas>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Overall Rating</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_avg_rating.avg_rating|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ client_avg_rating.avg_rating|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Communication</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_avg_rating.avg_communication|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ client_avg_rating.avg_communication|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Timely Replies</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_avg_rating.avg_timely_replies|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ client_avg_rating.avg_timely_replies|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Requirements Detail</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_avg_rating.avg_requirements|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ client_avg_rating.avg_requirements|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Instant Feedback</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_avg_rating.avg_feedback|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ client_avg_rating.avg_feedback|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Logical Revisions Ask</p>
+                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_avg_rating.avg_revisions|default:0 %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ client_avg_rating.avg_revisions|floatformat:1|default:"0.0" }}/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if client_reviews %}
+                            <div class="space-y-4">
+                                {% for review in client_reviews %}
+                                    <div class="border border-gray-100 rounded-lg p-4">
+                                        <!-- Job Information -->
+                                        <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+                                            <h3 class="font-medium text-lg mb-2">
+                                                <a href="{% url 'job:detail' review.job.id %}" class="text-green-600 hover:text-green-700">
+                                                    {{ review.job.title }}
+                                                </a>
+                                            </h3>
+                                            <div class="flex items-center text-sm text-gray-600">
+                                                <span class="mr-4">Budget: ৳{{ review.job.budget }}</span>
+                                                <span>Completed: {{ review.job.completion_date|date:"F Y" }}</span>
+                                                <span class="ml-4">
+                                                    <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                        <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                            {% for i in "12345" %}
+                                                                {% if forloop.counter <= review.rating %}
+                                                                    <i class="fas fa-star text-sm"></i>
+                                                                {% else %}
+                                                                    <i class="far fa-star text-sm"></i>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                        <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.rating|floatformat:1 }}/5</span>
+                                                    </div>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Reviewer Info -->
+                                        <div class="flex items-center mb-2">
+                                            <div class="flex items-center">
+                                                {% if review.reviewer.freelancer and review.reviewer.freelancer.profile_image %}
+                                                    <img src="{{ review.reviewer.freelancer.profile_image.url }}" class="w-10 h-10 rounded-full mr-3">
+                                                    <div>
+                                                        <a href="{% url 'freelancer:detail' review.reviewer.freelancer.id %}" class="font-medium hover:text-green-600">{{ review.reviewer.freelancer.fullname }}</a>
+                                                        <p class="text-sm text-gray-500">{{ review.created_at|date:"F j, Y" }}</p>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="w-10 h-10 rounded-full mr-3 bg-gray-200 flex items-center justify-center">
+                                                        <i class="fas fa-user text-gray-400"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="font-medium">{% if review.reviewer.freelancer %}<a href="{% url 'freelancer:detail' review.reviewer.freelancer.id %}" class="hover:text-green-600">{{ review.reviewer.freelancer.fullname }}</a>{% else %}{{ review.reviewer.username }} (Client){% endif %}</p>
+                                                        <p class="text-sm text-gray-500">{{ review.created_at|date:"F j, Y" }}</p>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-2 gap-4 mb-3">
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Communication</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.communication %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.communication }}/5</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Timely Replies</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.timely_replies %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.timely_replies }}/5</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Requirements Detail</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.requirements_detail %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.requirements_detail }}/5</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Instant Feedback</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.instant_feedback %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.instant_feedback }}/5</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-sm text-gray-500 mb-1">Logical Revisions Ask</p>
+                                                <div class="flex items-center flex-wrap gap-x-1 gap-y-0.5 min-w-0">
+                                                    <div class="flex text-yellow-400 mr-1 flex-shrink-0">
+                                                        {% for i in "12345" %}
+                                                            {% if forloop.counter <= review.logical_revisions %}
+                                                                <i class="fas fa-star text-sm"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star text-sm"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    <span class="text-sm flex-shrink-0 whitespace-nowrap">{{ review.logical_revisions }}/5</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <p class="text-gray-700">{{ review.content }}</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-gray-500">No client reviews yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar - Now visible on all screens -->
+        <div class="md:sticky md:top-6 h-fit">
+            <!-- Action Card - Only visible on desktop -->
+            <div class="hidden md:block bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+                {% if freelancer.user == request.user %}
+                    <h2 class="text-lg font-medium mb-4">Manage Your Profile</h2>
+                    <a href="{% url 'freelancer:edit' freelancer.id %}" class="block w-full py-3.5 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-base">
+                        <i class="fas fa-edit mr-2"></i>Edit Profile
+                    </a>
+                {% elif request.user.is_authenticated %}
+                    <h2 class="text-lg font-medium mb-4">Interested in hiring?</h2>
+                    <a href="{% url 'conversation:new' 'freelancer' freelancer.id %}" class="block w-full py-3.5 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-base">Contact Freelancer</a>
+                    <button id="inviteFreelancerBtn" class="block w-full py-3.5 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors mt-3 text-base">Invite to Job</button>
+                {% else %}
+                    <h2 class="text-lg font-medium mb-4">Interested in hiring?</h2>
+                    <a href="{% url 'account_login' %}?next={{ request.path }}" class="block w-full py-3.5 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-base">Sign in to Contact</a>
+                {% endif %}
+            </div>
+
+            <!-- Profile Stats -->
+            <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm mt-6">
+                <h2 class="text-lg font-medium mb-4">Profile Stats</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-money-bill-wave text-gray-400 w-5"></i>
+                        <span class="ml-3">Total Earnings: <span class="text-green-600 font-bold">৳{{ freelancer.get_total_earnings|floatformat:0 }}</span></span>
+                    </div>
+
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-money-bill-wave text-gray-400 w-5"></i>
+                        <span class="ml-3">Total Spent: <span class="text-green-600 font-bold">৳{{ total_spent|floatformat:0 }}</span></span>
+                    </div>
+
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-briefcase text-gray-400 w-5"></i>
+                        <span class="ml-3">Jobs Done: <span class="text-green-600 font-bold">{{ completed_hired_jobs }}</span></span>
+                    </div>
+                    
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-users text-gray-400 w-5"></i>
+                        <span class="ml-3">Freelancers Hired: <span class="text-green-600 font-bold">{{ total_freelancers_hired }}</span></span>
+                    </div>
+                    
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-code text-gray-400 w-5"></i>
+                        <span class="ml-3">Skills: <span class="text-green-600 font-bold">{{ freelancer.skills.all|length }}</span></span>
+                    </div>
+                    
+                    <div class="flex items-center py-3">
+                        <i class="fas fa-star text-gray-400 w-5"></i>
+                        <span class="ml-3">Reviews: <span class="text-green-600 font-bold">{{ freelancer.user.received_reviews.all|length }}</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Similar Freelancers -->
+            {% if similar_freelancers %}
+            <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm mt-6">
+                <h2 class="text-lg font-medium mb-4">Similar Freelancers</h2>
+                <div class="space-y-4">
+                    {% for similar in similar_freelancers|slice:":3" %}
+                        <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden transition-transform hover:shadow-md hover:-translate-y-1">
+                            <a href="{% url 'freelancer:detail' similar.id %}" class="block">
+                                <div class="flex items-center p-4">
+                                    <div class="w-16 h-16 rounded-full overflow-hidden mr-4 flex-shrink-0">
+                                        {% if similar.profile_image %}
+                                            <img src="{{ similar.profile_image.url }}" class="object-cover w-full h-full" alt="{{ similar.fullname }}">
+                                        {% else %}
+                                            <img src="https://cdn.pixabay.com/photo/2021/07/02/04/48/user-6380868_1280.png" class="object-contain w-full h-full" alt="{{ similar.fullname }}">
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow">
+                                        <div class="flex flex-col mb-2">
+                                            <h2 class="text-base font-medium">{{ similar.fullname }}</h2>
+                                            <span class="text-green-600 font-medium text-sm">৳{{ similar.hourly_rate }}/hr</span>
+                                        </div>
+                                        
+                                        <p class="text-sm text-gray-500 mb-2">{{ similar.category.name }}</p>
+                                        
+                                        <!-- Skills -->
+                                        {% if similar.skills.all %}
+                                            <div class="flex flex-wrap gap-2">
+                                                {% for skill in similar.skills.all|slice:":3" %}
+                                                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                        {{ skill.skill.name }}
+                                                    </span>
+                                                {% endfor %}
+                                                {% if similar.skills.all|length > 3 %}
+                                                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                        +{{ similar.skills.all|length|add:"-3" }} more
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Similar Jobs -->
+            {% if similar_jobs %}
+            <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm mt-6">
+                <h2 class="text-lg font-medium mb-4">Similar Jobs</h2>
+                <div class="space-y-4">
+                    {% for job in similar_jobs|slice:":3" %}
+                        <div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden transition-transform hover:shadow-md hover:-translate-y-1">
+                            <a href="{% url 'job:detail' job.id %}" class="block">
+                                <div class="p-4">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h2 class="text-base font-medium">{{ job.title }}</h2>
+                                        <span class="text-green-600 font-medium">৳{{ job.budget }}</span>
+                                    </div>
+                                    
+                                    <p class="text-sm text-gray-500 mb-2">{{ job.category.name }}</p>
+                                    
+                                    <!-- Skills -->
+                                    {% if job.skills.all %}
+                                        <div class="flex flex-wrap gap-2">
+                                            {% for skill in job.skills.all|slice:":3" %}
+                                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                    {{ skill.name }}
+                                                </span>
+                                            {% endfor %}
+                                            {% if job.skills.all|length > 3 %}
+                                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                    +{{ job.skills.all|length|add:"-3" }} more
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Invite Freelancer Modal -->
+<div id="inviteFreelancerModal" class="modal">
+    <div class="modal-content p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Select a Job to Invite</h2>
+            <button class="close-modal" onclick="closeInviteModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="space-y-4">
+            {% for job in request.user.posted_jobs.all %}
+                {% if not job.already_hired %}
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50" data-job-id="{{ job.id }}" data-job-title="{{ job.title }}">
+                        <div>
+                            <h3 class="font-medium">{{ job.title }}</h3>
+                            <p class="text-sm text-gray-500">৳{{ job.budget }}</p>
+                        </div>
+                        <button class="send-invitation-btn px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" data-job-id="{{ job.id }}">
+                            Send Invitation
+                        </button>
+                    </div>
+                {% endif %}
+            {% empty %}
+                <p class="text-gray-500 text-center py-4">You don't have any open jobs to invite to.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal" class="modal">
+    <div class="modal-content p-6">
+        <button type="button" class="close-modal">&times;</button>
+        <h2 class="text-xl font-semibold mb-4">Report <span id="reportType"></span></h2>
+        <form id="reportForm" class="space-y-4">
+            <input type="hidden" id="reportTypeInput" name="report_type">
+            <input type="hidden" id="reportIdInput" name="report_id">
+            
+            <div>
+                <label for="reason" class="block text-sm font-medium text-gray-700 mb-1">Reason for Report</label>
+                <select id="reason" name="reason" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
+                    <option value="">Select a reason</option>
+                    <option value="inappropriate_content">Inappropriate Content</option>
+                    <option value="spam">Spam or Scam</option>
+                    <option value="fake_profile">Fake Profile</option>
+                    <option value="harassment">Harassment</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="explanation" class="block text-sm font-medium text-gray-700 mb-1">Additional Details</label>
+                <textarea id="explanation" name="explanation" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Please provide more details about your report..." required></textarea>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="closeReportModal()">Cancel</button>
+                <button type="submit" class="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700">Submit Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tabs
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active', 'text-green-600', 'border-b-2', 'border-green-600');
+                btn.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+            tabContents.forEach(content => content.classList.add('hidden'));
+
+            // Add active class to clicked button and corresponding content
+            button.classList.remove('text-gray-500', 'hover:text-gray-700');
+            button.classList.add('active', 'text-green-600', 'border-b-2', 'border-green-600');
+            
+            const tabId = button.getAttribute('data-tab');
+            document.getElementById(`${tabId}-tab`).classList.remove('hidden');
+        });
+    });
+
+    // Add event listener for the invite button
+    const inviteButtons = document.querySelectorAll('#inviteFreelancerBtn');
+    
+    inviteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            openInviteModal();
+        });
+    });
+
+    // Add event listeners for invitation buttons
+    document.querySelectorAll('.send-invitation-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const jobId = this.getAttribute('data-job-id');
+            const freelancerId = parseInt('{{ freelancer.user.id }}');
+            
+            if (!jobId || isNaN(freelancerId)) {
+                alert('Invalid job or freelancer ID');
+                return;
+            }
+            
+            const jobElement = this.closest('[data-job-id]');
+            const jobTitle = jobElement ? jobElement.getAttribute('data-job-title') : 'the job';
+            
+            // Show loading state
+            const originalText = this.innerHTML;
+            this.innerHTML = '<img src="{% static "loading.gif" %}" alt="Loading..." class="w-5 h-5 inline-block"> Sending...';
+            this.disabled = true;
+            
+            const headers = new Headers();
+            headers.append('Content-Type', 'application/json');
+            headers.append('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            headers.append('X-Requested-With', 'XMLHttpRequest');
+
+            fetch(`{% url 'job:invite_to_job' 0 0 %}`.replace('0', jobId).replace('0', freelancerId), {
+                method: 'POST',
+                headers: headers,
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeInviteModal();
+                    alert('Invitation sent successfully!');
+                } else {
+                    alert(data.message || 'Failed to send invitation. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while sending the invitation. Please try again.');
+            })
+            .finally(() => {
+                // Restore button state
+                this.innerHTML = originalText;
+                this.disabled = false;
+            });
+        });
+    });
+
+    // Define chart options that will be used by both charts
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            r: {
+                beginAtZero: true,
+                max: 5,
+                ticks: {
+                    stepSize: 1
+                },
+                pointLabels: {
+                    font: {
+                        size: 12
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        elements: {
+            line: {
+                tension: 0.1
+            }
+        }
+    };
+
+    // Create radar charts if ratings exist
+    const freelancerChartCanvas = document.getElementById('ratingsRadarChart');
+    if (freelancerChartCanvas) {
+        try {
+            const freelancerRatings = JSON.parse(freelancerChartCanvas.dataset.ratings || '{}');
+            const freelancerCtx = freelancerChartCanvas.getContext('2d');
+            
+            const freelancerChartData = {
+                labels: [
+                    'Overall Rating',
+                    'Knowledge Depth',
+                    'Fast Turnaround',
+                    'Multiple Revisions',
+                    'Quality of Work',
+                    'Responsiveness'
+                ],
+                datasets: [{
+                    label: 'Average Ratings',
+                    data: [
+                        parseFloat(freelancerRatings.rating || 0),
+                        parseFloat(freelancerRatings.knowledge || 0),
+                        parseFloat(freelancerRatings.turnaround || 0),
+                        parseFloat(freelancerRatings.revisions || 0),
+                        parseFloat(freelancerRatings.quality || 0),
+                        parseFloat(freelancerRatings.responsiveness || 0)
+                    ],
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    pointBackgroundColor: 'rgb(34, 197, 94)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(34, 197, 94)'
+                }]
+            };
+
+            new Chart(freelancerCtx, {
+                type: 'radar',
+                data: freelancerChartData,
+                options: chartOptions
+            });
+        } catch (error) {
+            console.error('Error creating freelancer chart:', error);
+            // Create empty chart if there's an error
+            const freelancerCtx = freelancerChartCanvas.getContext('2d');
+            new Chart(freelancerCtx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        'Overall Rating',
+                        'Knowledge Depth',
+                        'Fast Turnaround',
+                        'Multiple Revisions',
+                        'Quality of Work',
+                        'Responsiveness'
+                    ],
+                    datasets: [{
+                        label: 'Average Ratings',
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        borderColor: 'rgb(34, 197, 94)',
+                        pointBackgroundColor: 'rgb(34, 197, 94)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(34, 197, 94)'
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+    }
+
+    const clientChartCanvas = document.getElementById('clientRatingsRadarChart');
+    if (clientChartCanvas) {
+        try {
+            const clientRatings = JSON.parse(clientChartCanvas.dataset.ratings || '{}');
+            const clientCtx = clientChartCanvas.getContext('2d');
+            
+            const clientChartData = {
+                labels: [
+                    'Overall Rating',
+                    'Communication',
+                    'Timely Replies',
+                    'Requirements Detail',
+                    'Instant Feedback',
+                    'Logical Revisions'
+                ],
+                datasets: [{
+                    label: 'Average Ratings',
+                    data: [
+                        parseFloat(clientRatings.rating || 0),
+                        parseFloat(clientRatings.communication || 0),
+                        parseFloat(clientRatings.timely_replies || 0),
+                        parseFloat(clientRatings.requirements || 0),
+                        parseFloat(clientRatings.feedback || 0),
+                        parseFloat(clientRatings.revisions || 0)
+                    ],
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    pointBackgroundColor: 'rgb(59, 130, 246)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(59, 130, 246)'
+                }]
+            };
+
+            new Chart(clientCtx, {
+                type: 'radar',
+                data: clientChartData,
+                options: chartOptions
+            });
+        } catch (error) {
+            console.error('Error creating client chart:', error);
+            // Create empty chart if there's an error
+            const clientCtx = clientChartCanvas.getContext('2d');
+            new Chart(clientCtx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        'Overall Rating',
+                        'Communication',
+                        'Timely Replies',
+                        'Requirements Detail',
+                        'Instant Feedback',
+                        'Logical Revisions'
+                    ],
+                    datasets: [{
+                        label: 'Average Ratings',
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(59, 130, 246)'
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+    }
+});
+
+// Invite Freelancer Modal Functions
+function openInviteModal() {
+    const modal = document.getElementById('inviteFreelancerModal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeInviteModal() {
+    const modal = document.getElementById('inviteFreelancerModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Report Modal Functionality
+const reportModal = document.getElementById('reportModal');
+const reportForm = document.getElementById('reportForm');
+const reportTypeSpan = document.getElementById('reportType');
+const reportTypeInput = document.getElementById('reportTypeInput');
+const reportIdInput = document.getElementById('reportIdInput');
+
+function openReportModal(type, id) {
+    reportTypeSpan.textContent = type === 'job' ? 'Job' : 'Freelancer';
+    reportTypeInput.value = type;
+    reportIdInput.value = id;
+    reportModal.classList.add('active');
+}
+
+function closeReportModal() {
+    reportModal.classList.remove('active');
+    reportForm.reset();
+}
+
+document.querySelectorAll('.report-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const type = btn.dataset.type;
+        const id = btn.dataset.id;
+        openReportModal(type, id);
+    });
+});
+
+document.querySelectorAll('.close-modal').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeReportModal();
+    });
+});
+
+reportModal.addEventListener('click', (e) => {
+    if (e.target === reportModal) {
+        closeReportModal();
+    }
+});
+
+reportForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(reportForm);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const reportUrl = "{% url 'job:submit_report' %}";
+    try {
+        const response = await fetch(reportUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                report_type: formData.get('report_type'),
+                report_id: formData.get('report_id'),
+                reason: formData.get('reason'),
+                explanation: formData.get('explanation'),
+            }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Thank you for your report. We will review it shortly.');
+            closeReportModal();
+        } else {
+            alert(data.error || 'An error occurred while submitting your report.');
+        }
+    } catch (error) {
+        console.error('Error submitting report:', error);
+        alert('An error occurred while submitting your report.');
+    }
+});
+</script>
+{% endblock %}

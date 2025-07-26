@@ -1,0 +1,123 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}New Conversation{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto my-12 bg-white rounded-xl shadow-lg p-8">
+    <div class="text-center mb-8">
+        <i class="fa-solid fa-message text-green-600 text-4xl mb-4"></i>
+        <h1 class="text-2xl font-semibold text-gray-800">Start a New Conversation</h1>
+        <p class="text-gray-500 mt-2">Send your first message</p>
+    </div>
+
+    <form method="post" action="." class="space-y-6" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="space-y-2">
+            <div class="relative">
+                <textarea 
+                    name="{{ form.content.name }}" 
+                    id="messageTextarea"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-800 placeholder-gray-500" 
+                    placeholder="Type your message..."
+                    rows="4"
+                ></textarea>
+                
+                <div class="absolute bottom-3 right-3 flex items-center space-x-2">
+                    <input type="file" name="image" id="id_image" class="hidden" accept="image/*">
+                    <label for="id_image" class="cursor-pointer text-gray-500 hover:text-green-600">
+                        <i class="fa-solid fa-image text-xl"></i>
+                    </label>
+                    <button type="submit" class="bg-green-600 text-white rounded-full w-10 h-10 flex items-center justify-center 
+                                               hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105 
+                                               focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-50">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
+            {% if form.content.errors %}
+                <div class="text-red-500 text-sm mt-1">
+                    {{ form.content.errors }}
+                </div>
+            {% endif %}
+
+            {% if form.image.errors %}
+                <div class="text-red-500 text-sm mt-1">
+                    {{ form.image.errors }}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get message from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const message = urlParams.get('message');
+        if (message) {
+            const textarea = document.getElementById('messageTextarea');
+            if (textarea) {
+                textarea.value = decodeURIComponent(message);
+                // Trigger input event to resize textarea
+                const event = new Event('input');
+                textarea.dispatchEvent(event);
+            }
+        }
+
+        // Textarea auto-resize
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                
+                if (this.scrollHeight > 200) {
+                    this.style.overflowY = 'auto';
+                    this.style.height = '200px';
+                }
+            });
+        }
+
+        // Image preview functionality
+        const imageInput = document.getElementById('id_image');
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        // Create preview element
+                        const preview = document.createElement('div');
+                        preview.className = 'image-preview mb-2';
+                        preview.innerHTML = `
+                            <img src="${e.target.result}" class="max-w-xs rounded-lg" alt="Preview">
+                            <button type="button" class="remove-image text-red-500 hover:text-red-700 mt-1">
+                                <i class="fa-solid fa-times"></i> Remove
+                            </button>
+                        `;
+                        
+                        // Insert preview before the textarea
+                        const textarea = document.querySelector('textarea');
+                        textarea.parentNode.insertBefore(preview, textarea);
+                        
+                        // Add remove functionality
+                        preview.querySelector('.remove-image').addEventListener('click', function() {
+                            preview.remove();
+                            imageInput.value = '';
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

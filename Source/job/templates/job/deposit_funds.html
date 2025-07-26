@@ -1,0 +1,202 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}Deposit Funds - {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <!-- Pending Verification Alert -->
+        {% if pending_payment %}
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.257 3.099c.366-.446.957-.533 1.403-.167.446.366.533.957.167 1.403l-5.5 6.5A1 1 0 004 12h12a1 1 0 00.832-1.555l-5.5-6.5z" /></svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700 font-semibold">Your payment is pending verification. Please wait for admin approval.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if has_rejected_payment %}
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" /></svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700 font-semibold">Your previous payment was rejected. Please submit a new payment.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Job Summary -->
+        <div class="mb-8 pb-8 border-b border-gray-100">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-900">Deposit Funds</h1>
+                <a href="{% url 'job:download_invoice' job.id %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Invoice
+                </a>
+            </div>
+            <div class="flex items-center justify-between mt-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800">{{ job.title }}</h2>
+                    <p class="text-gray-600 mt-1">{{ job.category.name }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Contract Amount</p>
+                    <p class="text-xl font-semibold text-green-600">৳{{ payment_details.amount|floatformat:0 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Instructions -->
+        <div class="mb-8">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Payment Instructions</h3>
+            <div class="bg-gray-50 rounded-lg p-6 space-y-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
+                            1
+                        </span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-gray-700">Send money to our bKash number:</p>
+                        <p class="text-xl font-semibold text-blue-600 mt-1">{{ platform_bkash }}</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
+                            2
+                        </span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-gray-700">Amount to send:</p>
+                        <div class="mt-2 space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Contract Amount:</span>
+                                <span class="font-medium">৳{{ payment_details.amount|floatformat:0 }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">bKash Fee (1.85%):</span>
+                                <span class="font-medium">৳{{ payment_details.bkash_fee|floatformat:0 }}</span>
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-gray-200">
+                                <span class="text-gray-900 font-medium">Total Amount:</span>
+                                <span class="text-green-600 font-semibold">৳{{ payment_details.total_amount|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
+                            3
+                        </span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-gray-700">After sending money, fill in the details below:</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Form -->
+        {% if not pending_payment %}
+        <form method="post" class="space-y-6" id="paymentForm" onsubmit="return validateForm()">
+            {% csrf_token %}
+            
+            {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                <p class="mt-1 text-sm text-red-600 hidden" id="{{ field.id_for_label }}_error"></p>
+                {% if field.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ field.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'job:detail' job.id %}" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    I have sent the payment
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Get form elements
+    const form = document.getElementById('paymentForm');
+    const transactionIdInput = document.querySelector('input[name="transaction_id"]');
+    const bkashNumberInput = document.querySelector('input[name="client_bkash_number"]');
+    const transactionIdError = document.getElementById('id_transaction_id_error');
+    const bkashNumberError = document.getElementById('id_client_bkash_number_error');
+
+    // Add input event listeners for real-time validation
+    transactionIdInput.addEventListener('input', validateTransactionId);
+    bkashNumberInput.addEventListener('input', validateBkashNumber);
+
+    function validateTransactionId() {
+        const value = transactionIdInput.value.replace(/\D/g, ''); // Remove non-digits
+        transactionIdInput.value = value; // Update input with only digits
+        
+        if (value.length === 0) {
+            transactionIdError.textContent = 'Transaction ID is required';
+            transactionIdError.classList.remove('hidden');
+            return false;
+        } else if (value.length !== 10) {
+            transactionIdError.textContent = 'Transaction ID must be exactly 10 digits';
+            transactionIdError.classList.remove('hidden');
+            return false;
+        } else {
+            transactionIdError.classList.add('hidden');
+            return true;
+        }
+    }
+
+    function validateBkashNumber() {
+        const value = bkashNumberInput.value.replace(/\D/g, ''); // Remove non-digits
+        bkashNumberInput.value = value; // Update input with only digits
+        
+        if (value.length === 0) {
+            bkashNumberError.textContent = 'bKash number is required';
+            bkashNumberError.classList.remove('hidden');
+            return false;
+        } else if (!value.startsWith('01')) {
+            bkashNumberError.textContent = 'bKash number must start with 01';
+            bkashNumberError.classList.remove('hidden');
+            return false;
+        } else if (value.length !== 11) {
+            bkashNumberError.textContent = 'bKash number must be exactly 11 digits';
+            bkashNumberError.classList.remove('hidden');
+            return false;
+        } else {
+            bkashNumberError.classList.add('hidden');
+            return true;
+        }
+    }
+
+    function validateForm() {
+        const isTransactionIdValid = validateTransactionId();
+        const isBkashNumberValid = validateBkashNumber();
+        
+        return isTransactionIdValid && isBkashNumberValid;
+    }
+</script>
+{% endblock %} 

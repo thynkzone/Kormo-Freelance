@@ -1,0 +1,861 @@
+{% extends 'layouts/default/base.html' %}
+{% load tz %}
+
+{% block title %}Conversation{% endblock %}
+
+{% block content %}
+
+<style>
+    /* Override base template padding for conversation page */
+    #content-wrapper {
+        padding-bottom: 0 !important;
+    }
+    .checkmark-sent {
+        color: #9CA3AF;  /* gray-400 */
+    }
+    .checkmark-delivered {
+        color: #9CA3AF;  /* gray-400 */
+    }
+    .checkmark-read {
+        color: #2563EB;  /* blue-600 */
+    }
+    .message-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 1px;
+    }
+    .voice-waveform {
+        height: 2px;
+        background: linear-gradient(90deg, #10B981 0%, #10B981 50%, #E5E7EB 50%, #E5E7EB 100%);
+        background-size: 8px 2px;
+        animation: waveform 1s linear infinite;
+    }
+
+    @keyframes waveform {
+        0% {
+            background-position: 0 0;
+        }
+        100% {
+            background-position: 8px 0;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .fixed.bottom-0.left-0.right-0.bg-white {
+            display: none !important;
+        }
+        .show-back-arrow-on-tablet {
+            display: inline-flex !important;
+        }
+    }
+</style>
+
+<div class="flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden bg-gray-50">
+    <!-- Sidebar with Conversation List -->
+    <div class="w-full md:w-80 lg:w-96 bg-white border-r border-gray-200 flex flex-col h-full md:block hidden">
+        <!-- Search Bar -->
+        <div class="p-4 border-b border-gray-200 bg-white h-20">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Search conversations" 
+                       class="w-full pl-10 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+        </div>
+
+        <!-- Conversation List -->
+        <div id="conversationList" class="overflow-y-auto flex-1">
+            {% for conversation in conversations %}
+                {% for member in conversation.members.all %}
+                    {% if member != request.user %}
+                        <a href="{% url 'conversation:detail' conversation.id %}" 
+                           class="block hover:bg-gray-50 border-b border-gray-100 {% if conversation.id == pk|add:'0' %}bg-gray-50{% endif %}"
+                           data-username="{{ member.username }}"
+                           data-fullname="{% if member.freelancer %}{{ member.freelancer.fullname }}{% else %}{{ member.get_full_name|default:member.username }}{% endif %}"
+                           data-last-message="{{ conversation.last_message.content|default:'' }}">
+                            <div class="flex items-center p-4">
+                                {% if member.freelancer and member.freelancer.profile_image %}
+                                    <img src="{{ member.freelancer.profile_image.url }}" class="w-12 h-12 rounded-full mr-3 object-cover">
+                                {% else %}
+                                    <img src="https://ui-avatars.com/api/?name={{ member.get_full_name|default:member.username|urlencode }}&background=10B981&color=ffffff" class="w-12 h-12 rounded-full mr-3">
+                                {% endif %}
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <p class="font-medium text-gray-900">
+                                            {% if member.freelancer %}
+                                                {{ member.freelancer.fullname }}
+                                            {% else %}
+                                                {{ member.get_full_name|default:member.username }}
+                                            {% endif %}
+                                        </p>
+                                        <span class="text-xs text-gray-500 ml-2">
+                                            {% if conversation.last_message %}
+                                                {{ conversation.last_message.created_at|localtime|date:"M d" }}
+                                            {% else %}
+                                                {{ conversation.created_at|localtime|date:"M d" }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center mt-1">
+                                        <p class="text-sm text-gray-600 truncate flex-1">
+                                            {% if conversation.last_message %}
+                                                {% if conversation.last_message.image %}
+                                                    <i class="fa-solid fa-image text-gray-400 mr-1"></i> Image
+                                                {% elif conversation.last_message.document %}
+                                                    <i class="fa-solid fa-file-pdf text-gray-400 mr-1"></i> Document
+                                                {% else %}
+                                                    {{ conversation.last_message.content|truncatechars:30 }}
+                                                {% endif %}
+                                            {% else %}
+                                                No messages yet
+                                            {% endif %}
+                                        </p>
+                                        {% if conversation.unread_count > 0 %}
+                                            <span class="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                {{ conversation.unread_count }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            {% empty %}
+                <div class="text-center p-8 text-gray-400">
+                    <i class="fa-regular fa-comments text-4xl mb-3"></i>
+                    <p>No conversations yet</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Main Conversation Area -->
+    <div class="flex-1 flex flex-col h-full">
+        <!-- Conversation Header -->
+        <div class="bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10 h-20">
+            {% if conversation %}
+                <div class="flex items-center flex-1">
+                    {% for member in conversation.members.all %}
+                        {% if member != request.user %}
+                            <div class="flex items-center">
+                                {% if member.freelancer and member.freelancer.profile_image %}
+                                    <img src="{{ member.freelancer.profile_image.url }}" class="w-10 h-10 rounded-full mr-3 object-cover">
+                                {% else %}
+                                    <img src="https://ui-avatars.com/api/?name={{ member.get_full_name|default:member.username|urlencode }}&background=10B981&color=ffffff" class="w-10 h-10 rounded-full mr-3">
+                                {% endif %}
+                                <div>
+                                    <p class="font-medium text-gray-900">
+                                        {% if member.freelancer %}
+                                            {{ member.freelancer.fullname }}
+                                        {% else %}
+                                            {{ member.get_full_name|default:member.username }}
+                                        {% endif %}
+                                    </p>
+                                    <span class="block text-sm text-gray-500 mt-1 md:mt-0 md:inline md:ml-2">
+                                        Last seen {{ last_seen }}
+                                    </span>
+                                    {% if member.freelancer and member.freelancer.title %}
+                                        <p class="text-sm text-gray-500">{{ member.freelancer.title }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <a href="{% url 'conversation:inbox' %}" class="md:hidden show-back-arrow-on-tablet text-green-600 ml-4" style="display:none;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+            {% else %}
+                <div class="text-center w-full text-gray-500">
+                    Select a conversation to start messaging
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Messages Container -->
+        <div class="messages-container flex-1 overflow-y-auto p-4 space-y-4" style="overflow-x:hidden;">
+            {% if conversation %}
+                {% for message in conversation.messages.all %}
+                    {% ifchanged message.created_at|date:"Y-m-d" %}
+                        <div class="flex justify-center my-4">
+                            <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                {{ message.created_at|localtime|date:"F j, Y" }}
+                            </span>
+                        </div>
+                    {% endifchanged %}
+                    <div class="flex {% if message.created_by == request.user %}justify-end{% endif %}">
+                        <div class="flex {% if message.created_by == request.user %}flex-row-reverse{% endif %} items-start max-w-[75%] group">
+                            {% if message.created_by.freelancer and message.created_by.freelancer.profile_image %}
+                                <img src="{{ message.created_by.freelancer.profile_image.url }}" class="w-8 h-8 rounded-full {% if message.created_by == request.user %}ml-2{% else %}mr-2{% endif %} object-cover">
+                            {% else %}
+                                <img src="https://ui-avatars.com/api/?name={{ message.created_by.get_full_name|default:message.created_by.username|urlencode }}&background=10B981&color=ffffff" class="w-8 h-8 rounded-full {% if message.created_by == request.user %}ml-2{% else %}mr-2{% endif %}">
+                            {% endif %}
+                            <div>
+                                <div class="{% if message.created_by == request.user %}bg-green-600 text-white{% else %}bg-white text-gray-900{% endif %} rounded-2xl px-4 py-2 shadow-sm">
+                                    {% if message.image %}
+                                        <img src="{{ message.image.url }}" class="max-w-[70vw] md:max-w-sm rounded-lg mb-2 object-contain" alt="Shared image" style="width:100%;height:auto;">
+                                    {% endif %}
+                                    {% if message.document %}
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <a href="{{ message.document.url }}" target="_blank" class="flex items-center space-x-2 {% if message.created_by == request.user %}text-white hover:text-gray-200{% else %}text-blue-600 hover:text-blue-800{% endif %}">
+                                                <i class="fa-solid fa-file-pdf text-xl"></i>
+                                                <span class="text-sm">{{ message.document.name|cut:"conversation_documents/" }}</span>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                    {% if message.voice %}
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <button type="button" class="play-voice-btn" data-voice-url="{{ message.voice.url }}" data-voice-duration="{{ message.voice_duration|default:'00:00' }}">
+                                                <i class="fa-solid fa-play text-xl"></i>
+                                            </button>
+                                            <div class="flex-1">
+                                                <div class="voice-waveform"></div>
+                                            </div>
+                                            <span class="voice-duration text-sm">{{ message.voice_duration|default:'00:00' }}</span>
+                                        </div>
+                                    {% endif %}
+                                    <div class="message-content break-words">{{ message.content|linebreaks }}</div>
+                                </div>
+                                <div class="flex items-center {% if message.created_by == request.user %}justify-end{% endif %} mt-1 space-x-1">
+                                    <span class="text-xs text-gray-500">{{ message.created_at|localtime|date:"g:i A" }}</span>
+                                    {% if message.created_by == request.user and message == conversation.messages.last %}
+                                        {% if message.is_read %}
+                                            <span class="text-xs text-blue-600">seen</span>
+                                        {% elif message.is_delivered %}
+                                            <span class="text-xs text-gray-400">delivered</span>
+                                        {% else %}
+                                            <span class="text-xs text-gray-400">sent</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="text-center text-gray-400 mt-20">
+                        <i class="fa-regular fa-comments text-4xl mb-3"></i>
+                        <p>No messages yet</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Message Input -->
+        <div class="bg-white border-t border-gray-200 p-4 sticky bottom-0 z-[10000]">
+            {% if conversation %}
+                <form method="post" action="." class="flex items-center space-x-4 w-full" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="flex-1 relative min-w-0" style="overflow-x:hidden;">
+                        <div class="flex items-center bg-gray-50 rounded-full border border-gray-200">
+                            <label for="id_image" class="p-2 hover:text-green-600 cursor-pointer ml-2">
+                                <i class="fa-solid fa-image text-xl"></i>
+                            </label>
+                            <input type="file" name="image" id="id_image" class="hidden" accept="image/*">
+                            <label for="id_document" class="p-2 hover:text-green-600 cursor-pointer">
+                                <i class="fa-solid fa-file-pdf text-xl"></i>
+                            </label>
+                            <input type="file" name="document" id="id_document" class="hidden" accept=".pdf">
+                            <button type="button" id="voiceRecordBtn" class="p-2 hover:text-green-600 cursor-pointer">
+                                <i class="fa-solid fa-microphone text-xl"></i>
+                            </button>
+                            <input type="file" name="voice" id="id_voice" class="hidden" accept="audio/*">
+                            <input type="hidden" name="voice_duration" id="id_voice_duration">
+                            <textarea 
+                                name="{{ form.content.name }}" 
+                                class="flex-1 bg-transparent resize-none px-4 py-2 focus:outline-none text-gray-800 placeholder-gray-500 break-words"
+                                placeholder="Type your message..."
+                                rows="1"
+                                autofocus
+                            >{{ form.content.value|default_if_none:"" }}</textarea>
+                        </div>
+                        <!-- Document preview -->
+                        <div id="documentPreview" class="hidden absolute bottom-full left-0 mb-2 w-full">
+                            <div class="bg-white rounded-lg shadow-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-gray-600">Document Preview</span>
+                                    <span id="documentSize" class="text-gray-500">0 MB</span>
+                                </div>
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <i class="fa-solid fa-file-pdf text-red-500 text-xl"></i>
+                                    <span id="documentName" class="text-sm text-gray-600 truncate flex-1"></span>
+                                </div>
+                                <div class="flex justify-end space-x-2">
+                                    <button type="button" id="removeDocumentBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="voiceRecordingUI" class="hidden fixed bottom-20 left-1/2 transform -translate-x-1/2 w-96 z-50">
+                            <div class="bg-white rounded-lg shadow-lg p-4 flex items-center justify-between border border-gray-200">
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span class="text-gray-600">Recording...</span>
+                                    <span id="recordingTime" class="text-gray-500">00:00</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button type="button" id="cancelRecordingBtn" class="text-gray-500 hover:text-red-500">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                    <button type="button" id="stopRecordingBtn" class="text-green-600 hover:text-green-700">
+                                        <i class="fa-solid fa-stop"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="voicePreviewUI" class="hidden fixed bottom-20 left-1/2 transform -translate-x-1/2 w-96 z-50">
+                            <div class="bg-white rounded-lg shadow-lg p-4 border border-gray-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-gray-600">Preview</span>
+                                    <span id="previewDuration" class="text-gray-500">00:00</span>
+                                </div>
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <button type="button" id="playPreviewBtn" class="text-green-600 hover:text-green-700">
+                                        <i class="fa-solid fa-play text-xl"></i>
+                                    </button>
+                                    <div class="flex-1">
+                                        <div class="voice-waveform"></div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end space-x-2">
+                                    <button type="button" id="cancelPreviewBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                                        Cancel
+                                    </button>
+                                    <button type="button" id="sendPreviewBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                        Send
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.image.errors %}
+                            <div class="mt-2 text-sm text-red-600">
+                                {% for error in form.image.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% if form.document.errors %}
+                            <div class="mt-2 text-sm text-red-600">
+                                {% for error in form.document.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="bg-green-600 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-green-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 flex-shrink-0">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const messagesContainer = document.querySelector('.messages-container');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Convert URLs to clickable links
+        function urlize(text, isGreenBackground) {
+            const urlPattern = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlPattern, function(url) {
+                const linkClass = isGreenBackground ? 'text-white hover:text-gray-200 underline' : 'text-blue-600 hover:text-blue-800 underline';
+                return `<a href="${url}" target="_blank" class="${linkClass}">${url}</a>`;
+            });
+        }
+
+        // Process all message content
+        const messageContents = document.querySelectorAll('.message-content');
+        messageContents.forEach(content => {
+            if (content.textContent.match(/(https?:\/\/[^\s]+)/g)) {
+                const isGreenBackground = content.closest('.bg-green-600') !== null;
+                content.innerHTML = urlize(content.textContent, isGreenBackground);
+            }
+        });
+
+        // Voice recording functionality
+        const voiceRecordBtn = document.getElementById('voiceRecordBtn');
+        const voiceRecordingUI = document.getElementById('voiceRecordingUI');
+        const voicePreviewUI = document.getElementById('voicePreviewUI');
+        const stopRecordingBtn = document.getElementById('stopRecordingBtn');
+        const cancelRecordingBtn = document.getElementById('cancelRecordingBtn');
+        const playPreviewBtn = document.getElementById('playPreviewBtn');
+        const cancelPreviewBtn = document.getElementById('cancelPreviewBtn');
+        const sendPreviewBtn = document.getElementById('sendPreviewBtn');
+        const recordingTime = document.getElementById('recordingTime');
+        const previewDuration = document.getElementById('previewDuration');
+        const voiceInput = document.getElementById('id_voice');
+        const voiceDurationInput = document.getElementById('id_voice_duration');
+        
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingStartTime;
+        let recordingTimer;
+        let previewAudio;
+        let currentAudio = null;
+        let currentAudioPosition = 0;
+        let currentAudioUrl = null;
+        let audioContext;
+        let mediaStream;
+        let previewAudioPosition = 0;
+        let previewAudioUrl = null;
+
+        if (voiceRecordBtn) {
+            voiceRecordBtn.addEventListener('click', startRecording);
+        }
+
+        if (stopRecordingBtn) {
+            stopRecordingBtn.addEventListener('click', stopRecording);
+        }
+
+        if (cancelRecordingBtn) {
+            cancelRecordingBtn.addEventListener('click', cancelRecording);
+        }
+
+        if (playPreviewBtn) {
+            playPreviewBtn.addEventListener('click', togglePreviewPlayback);
+        }
+
+        if (cancelPreviewBtn) {
+            cancelPreviewBtn.addEventListener('click', cancelPreview);
+        }
+
+        if (sendPreviewBtn) {
+            sendPreviewBtn.addEventListener('click', sendVoiceMessage);
+        }
+
+        async function startRecording() {
+            try {
+                // First check if we have permission
+                const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+                if (permissionStatus.state === 'denied') {
+                    alert('Microphone access is denied. Please enable microphone access in your browser settings.');
+                    return;
+                }
+
+                // Try to get media stream
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                // Check if we got a valid stream
+                if (!mediaStream || !mediaStream.getAudioTracks().length) {
+                    throw new Error('No audio track available');
+                }
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Try different mime types
+                const mimeTypes = [
+                    'audio/mp3',
+                    'audio/webm',
+                    'audio/webm;codecs=opus',
+                    'audio/ogg;codecs=opus'
+                ];
+                
+                let selectedMimeType = '';
+                for (const mimeType of mimeTypes) {
+                    if (MediaRecorder.isTypeSupported(mimeType)) {
+                        selectedMimeType = mimeType;
+                        break;
+                    }
+                }
+
+                if (!selectedMimeType) {
+                    throw new Error('No supported audio format found');
+                }
+
+                mediaRecorder = new MediaRecorder(mediaStream, {
+                    mimeType: selectedMimeType
+                });
+                
+                audioChunks = [];
+                recordingStartTime = Date.now();
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    // Only show preview if we're not canceling
+                    if (mediaRecorder) {
+                        const audioBlob = new Blob(audioChunks, { type: selectedMimeType });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        previewAudio = new Audio(audioUrl);
+                        
+                        // Calculate duration from recording time
+                        const elapsedTime = Math.floor((Date.now() - recordingStartTime) / 1000);
+                        const minutes = Math.floor(elapsedTime / 60).toString().padStart(2, '0');
+                        const seconds = (elapsedTime % 60).toString().padStart(2, '0');
+                        const durationStr = `${minutes}:${seconds}`;
+                        previewDuration.textContent = durationStr;
+                        voiceDurationInput.value = durationStr;
+
+                        voicePreviewUI.classList.remove('hidden');
+                    }
+                };
+
+                mediaRecorder.start(100);
+                voiceRecordingUI.classList.remove('hidden');
+                startRecordingTimer();
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                let errorMessage = 'Error accessing microphone. ';
+                
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    errorMessage += 'Please allow microphone access in your browser settings.';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    errorMessage += 'No microphone found. Please check your device connections.';
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    errorMessage += 'Your microphone is busy. Please close other applications using the microphone.';
+                } else {
+                    errorMessage += 'Please check your microphone settings and try again.';
+                }
+                
+                alert(errorMessage);
+            }
+        }
+
+        function startRecordingTimer() {
+            recordingTimer = setInterval(() => {
+                const elapsedTime = Math.floor((Date.now() - recordingStartTime) / 1000);
+                const minutes = Math.floor(elapsedTime / 60).toString().padStart(2, '0');
+                const seconds = (elapsedTime % 60).toString().padStart(2, '0');
+                recordingTime.textContent = `${minutes}:${seconds}`;
+                
+                // Stop recording after 3 minutes (180 seconds)
+                if (elapsedTime >= 180) {
+                    stopRecording();
+                    alert('Voice message recording stopped. Maximum duration is 3 minutes.');
+                }
+            }, 1000);
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaStream.getTracks().forEach(track => track.stop());
+                clearInterval(recordingTimer);
+                voiceRecordingUI.classList.add('hidden');
+            }
+        }
+
+        function cancelRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                // Hide preview UI first
+                voicePreviewUI.classList.add('hidden');
+                // Stop the recording
+                mediaRecorder.stop();
+                mediaStream.getTracks().forEach(track => track.stop());
+                clearInterval(recordingTimer);
+                voiceRecordingUI.classList.add('hidden');
+                // Clear all audio data
+                audioChunks = [];
+                voiceDurationInput.value = '';
+                if (previewAudio) {
+                    previewAudio.pause();
+                    previewAudio = null;
+                }
+                // Reset the mediaRecorder
+                mediaRecorder = null;
+            }
+        }
+
+        function togglePreviewPlayback() {
+            if (previewAudio) {
+                const playIcon = playPreviewBtn.querySelector('i');
+                
+                if (!previewAudio.paused) {
+                    // Pause the current audio and store its position
+                    previewAudio.pause();
+                    previewAudioPosition = previewAudio.currentTime;
+                    playIcon.classList.remove('fa-pause');
+                    playIcon.classList.add('fa-play');
+                } else {
+                    // Create new audio and resume from stored position
+                    const audioUrl = URL.createObjectURL(new Blob(audioChunks, { type: 'audio/mp3' }));
+                    previewAudio = new Audio(audioUrl);
+                    previewAudio.currentTime = previewAudioPosition;
+                    
+                    previewAudio.addEventListener('play', () => {
+                        playIcon.classList.remove('fa-play');
+                        playIcon.classList.add('fa-pause');
+                    });
+                    
+                    previewAudio.addEventListener('pause', () => {
+                        playIcon.classList.remove('fa-pause');
+                        playIcon.classList.add('fa-play');
+                    });
+                    
+                    previewAudio.addEventListener('ended', () => {
+                        playIcon.classList.remove('fa-pause');
+                        playIcon.classList.add('fa-play');
+                        previewAudioPosition = 0;
+                        previewAudioUrl = null;
+                    });
+                    
+                    previewAudio.play().catch(error => {
+                        console.error('Error playing preview:', error);
+                    });
+                }
+            }
+        }
+
+        function cancelPreview() {
+            if (previewAudio) {
+                previewAudio.pause();
+                previewAudio = null;
+                previewAudioPosition = 0;
+                previewAudioUrl = null;
+            }
+            voicePreviewUI.classList.add('hidden');
+            audioChunks = [];
+            voiceDurationInput.value = '';
+        }
+
+        function sendVoiceMessage() {
+            if (audioChunks.length > 0) {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                const audioFile = new File([audioBlob], 'voice-message.mp3', { type: 'audio/mp3' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(audioFile);
+                voiceInput.files = dataTransfer.files;
+                
+                // Ensure the form has the correct enctype
+                const form = voiceInput.closest('form');
+                if (form) {
+                    form.enctype = 'multipart/form-data';
+                    form.submit();
+                }
+            }
+        }
+
+        // Voice message playback
+        document.querySelectorAll('.play-voice-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const voiceUrl = this.getAttribute('data-voice-url');
+                const playIcon = this.querySelector('i');
+                
+                // If this is the currently playing audio
+                if (currentAudioUrl === voiceUrl) {
+                    if (currentAudio && !currentAudio.paused) {
+                        // Pause the current audio and store its position
+                        currentAudio.pause();
+                        currentAudioPosition = currentAudio.currentTime;
+                        playIcon.classList.remove('fa-pause');
+                        playIcon.classList.add('fa-play');
+                    } else {
+                        // Create new audio and resume from stored position
+                        if (currentAudio) {
+                            currentAudio.pause();
+                            currentAudio = null;
+                        }
+                        
+                        const audio = new Audio(voiceUrl);
+                        audio.currentTime = currentAudioPosition;
+                        
+                        audio.addEventListener('play', () => {
+                            playIcon.classList.remove('fa-play');
+                            playIcon.classList.add('fa-pause');
+                            currentAudio = audio;
+                        });
+                        
+                        audio.addEventListener('pause', () => {
+                            playIcon.classList.remove('fa-pause');
+                            playIcon.classList.add('fa-play');
+                        });
+                        
+                        audio.addEventListener('ended', () => {
+                            playIcon.classList.remove('fa-pause');
+                            playIcon.classList.add('fa-play');
+                            currentAudio = null;
+                            currentAudioPosition = 0;
+                        });
+                        
+                        audio.play().catch(error => {
+                            console.error('Error playing voice message:', error);
+                        });
+                    }
+                    return;
+                }
+
+                // Stop any currently playing audio
+                if (currentAudio) {
+                    currentAudio.pause();
+                    const currentPlayBtn = document.querySelector('.play-voice-btn i.fa-pause');
+                    if (currentPlayBtn) {
+                        currentPlayBtn.classList.remove('fa-pause');
+                        currentPlayBtn.classList.add('fa-play');
+                    }
+                }
+                
+                // Reset position for new audio
+                currentAudioPosition = 0;
+                currentAudioUrl = voiceUrl;
+                
+                // Create and play new audio
+                const audio = new Audio(voiceUrl);
+                
+                audio.addEventListener('play', () => {
+                    playIcon.classList.remove('fa-play');
+                    playIcon.classList.add('fa-pause');
+                    currentAudio = audio;
+                });
+                
+                audio.addEventListener('pause', () => {
+                    playIcon.classList.remove('fa-pause');
+                    playIcon.classList.add('fa-play');
+                });
+                
+                audio.addEventListener('ended', () => {
+                    playIcon.classList.remove('fa-pause');
+                    playIcon.classList.add('fa-play');
+                    currentAudio = null;
+                    currentAudioPosition = 0;
+                    currentAudioUrl = null;
+                });
+                
+                audio.play().catch(error => {
+                    console.error('Error playing voice message:', error);
+                });
+            });
+        });
+
+        // Textarea auto-resize and focus
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            // Auto focus with a slight delay to ensure it works on mobile
+            setTimeout(() => {
+                textarea.focus();
+            }, 100);
+
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+                // Scroll messages container to bottom when typing
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+
+            // Prevent zoom on mobile when focusing input
+            const viewport = document.querySelector('meta[name=viewport]');
+            if (!viewport) {
+                const meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.content = 'width=device-width, initial-scale=1, maximum-scale=1';
+                document.head.appendChild(meta);
+            } else {
+                viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1';
+            }
+        }
+
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const conversationList = document.getElementById('conversationList');
+        const conversationItems = conversationList.querySelectorAll('[data-username]');
+
+        if (searchInput && conversationItems) {
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                conversationItems.forEach(item => {
+                    const username = item.getAttribute('data-username').toLowerCase();
+                    const fullname = item.getAttribute('data-fullname').toLowerCase();
+                    const lastMessage = item.getAttribute('data-last-message').toLowerCase();
+                    item.style.display = username.includes(searchTerm) || fullname.includes(searchTerm) || lastMessage.includes(searchTerm) ? 'block' : 'none';
+                });
+            });
+        }
+
+        // Image preview
+        const imageInput = document.getElementById('id_image');
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.createElement('div');
+                        preview.className = 'mt-2';
+                        preview.innerHTML = `
+                            <img src="${e.target.result}" class="max-w-xs rounded-lg" alt="Preview">
+                            <button type="button" class="text-red-500 text-sm mt-1" onclick="removeImage(this)">
+                                Remove image
+                            </button>
+                        `;
+                        const container = imageInput.closest('.relative');
+                        container.appendChild(preview);
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Function to remove image
+        window.removeImage = function(button) {
+            const preview = button.parentElement;
+            preview.remove();
+            imageInput.value = '';
+            // Create a new empty file input to replace the old one
+            const newInput = document.createElement('input');
+            newInput.type = 'file';
+            newInput.name = 'image';
+            newInput.id = 'id_image';
+            newInput.className = 'hidden';
+            newInput.accept = 'image/*';
+            imageInput.parentNode.replaceChild(newInput, imageInput);
+            // Reattach the change event listener
+            newInput.addEventListener('change', imageInput.onchange);
+        }
+
+        // Document upload functionality
+        const documentInput = document.getElementById('id_document');
+        const documentPreview = document.getElementById('documentPreview');
+        const documentName = document.getElementById('documentName');
+        const documentSize = document.getElementById('documentSize');
+        const removeDocumentBtn = document.getElementById('removeDocumentBtn');
+
+        if (documentInput) {
+            documentInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    // Check file size (20 MB limit)
+                    if (file.size > 20 * 1024 * 1024) {
+                        alert('Document size cannot exceed 20 MB.');
+                        this.value = '';
+                        return;
+                    }
+
+                    // Check file type
+                    if (file.type !== 'application/pdf') {
+                        alert('Only PDF files are allowed.');
+                        this.value = '';
+                        return;
+                    }
+
+                    documentName.textContent = file.name;
+                    documentSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                    documentPreview.classList.remove('hidden');
+                }
+            });
+        }
+
+        if (removeDocumentBtn) {
+            removeDocumentBtn.addEventListener('click', function() {
+                documentInput.value = '';
+                documentPreview.classList.add('hidden');
+            });
+        }
+    });
+</script>
+
+{% endblock %}

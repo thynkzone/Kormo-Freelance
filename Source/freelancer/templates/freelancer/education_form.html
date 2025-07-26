@@ -1,0 +1,118 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}{% if form.instance.pk %}Edit Education{% else %}Add Education{% endif %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Form Header -->
+            <div class="px-6 py-8 border-b border-gray-100">
+                <h1 class="text-3xl font-bold text-gray-900">{% if form.instance.pk %}Edit Education{% else %}Add Education{% endif %}</h1>
+                <p class="mt-2 text-sm text-gray-600">Add or update your educational background.</p>
+            </div>
+
+            <!-- Form Content -->
+            <form method="post" class="divide-y divide-gray-100">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                    {% for error in form.non_field_errors %}
+                        <p class="text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="p-6">
+                    <div class="space-y-6">
+                        <!-- Institution -->
+                        <div>
+                            <label for="{{ form.institution.id_for_label }}" class="block text-sm font-medium text-gray-700">Institution</label>
+                            {{ form.institution }}
+                            {% if form.institution.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.institution.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Degree -->
+                        <div>
+                            <label for="{{ form.degree.id_for_label }}" class="block text-sm font-medium text-gray-700">Degree</label>
+                            {{ form.degree }}
+                            {% if form.degree.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.degree.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Field of Study -->
+                        <div>
+                            <label for="{{ form.field_of_study.id_for_label }}" class="block text-sm font-medium text-gray-700">Field of Study</label>
+                            {{ form.field_of_study }}
+                            {% if form.field_of_study.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.field_of_study.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                            <div>
+                                <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Start Date</label>
+                                {{ form.start_date }}
+                                {% if form.start_date.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.start_date.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-700">End Date</label>
+                                {{ form.end_date }}
+                                {% if form.end_date.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.end_date.errors }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Current Education -->
+                        <div>
+                            <label class="inline-flex items-center">
+                                {{ form.current }}
+                                <span class="ml-2 text-sm text-gray-600">I am currently studying here</span>
+                            </label>
+                        </div>
+
+                        <!-- Description -->
+                        <div>
+                            <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.description.errors }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <a href="{% url 'freelancer:detail' pk=freelancer.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Cancel
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        {% if form.instance.pk %}Save Changes{% else %}Add Education{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Show/hide end date based on current checkbox
+    document.getElementById('{{ form.current.id_for_label }}').addEventListener('change', function() {
+        const endDateField = document.getElementById('{{ form.end_date.id_for_label }}').parentElement;
+        if (this.checked) {
+            endDateField.style.display = 'none';
+        } else {
+            endDateField.style.display = 'block';
+        }
+    });
+</script>
+{% endblock %} 

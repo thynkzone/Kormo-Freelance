@@ -1,0 +1,20 @@
+{% load i18n %}
+
+{% trans "Hello" %} {{ user.username }},
+
+{% trans "Your payment for the job" %} {{ job.title }} {% trans "has been verified." %}
+
+{% trans "Amount:" %} {{ amount }}
+
+{% trans "Payment Details:" %}
+- {% trans "Job Title:" %} {{ job.title }}
+- {% trans "Transaction ID:" %} {{ transaction_id }}
+- {% trans "Payment Method:" %} {{ payment_method }}
+- {% trans "Verified At:" %} {{ verified_at }}
+
+{% trans "View job details here:" %}
+{{ job_url }}
+
+{% trans "The freelancer has been notified and can now begin working on your project." %}
+
+{% trans "This is an automated message, please do not reply to this email." %} 

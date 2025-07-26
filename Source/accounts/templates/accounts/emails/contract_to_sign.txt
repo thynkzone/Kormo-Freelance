@@ -1,0 +1,19 @@
+{% load i18n %}
+
+{% trans "Hello" %} {{ user.username }},
+
+{% trans "You have a new contract to sign for the job:" %} {{ job.title }}
+
+{% trans "The client has already signed the contract and is waiting for your signature to begin the work." %}
+
+{% trans "Please review and sign the contract by visiting:" %}
+{{ contract_url }}
+
+{% trans "Contract Details:" %}
+- {% trans "Job Title:" %} {{ job.title }}
+- {% trans "Client:" %} {{ client.username }}
+- {% trans "Amount:" %} {{ amount }}
+
+{% trans "Please note that you have 24 hours to sign the contract before it expires." %}
+
+{% trans "This is an automated message, please do not reply to this email." %} 

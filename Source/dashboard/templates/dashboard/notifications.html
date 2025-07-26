@@ -1,0 +1,153 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-medium">Notifications</h2>
+        <button id="mark-all-read" class="text-sm text-green-600 hover:text-green-700">Mark all as read</button>
+    </div>
+    <div class="space-y-4">
+        {% for notification in notifications %}
+            <div class="bg-white p-4 rounded-lg border {% if not notification.is_read %}border-green-200 bg-green-50{% else %}border-gray-100{% endif %}">
+                <div class="flex flex-row items-start justify-between gap-2 sm:gap-4">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm {% if not notification.is_read %}font-medium{% endif %}">
+                            {% if notification.notification_type == 'message' %}
+                                {% if notification.related_conversation and notification.related_conversation.id %}
+                                    <a href="{% url 'conversation:detail' notification.related_conversation.id %}" class="hover:underline">
+                                        {{ notification.message }}
+                                    </a>
+                                {% else %}
+                                    {{ notification.message|safe }}
+                                {% endif %}
+                            {% elif notification.notification_type == 'proposal' %}
+                                {% if 'invited to apply' in notification.message %}
+                                    <a href="{% url 'job:detail' notification.related_job.id %}" class="hover:underline">
+                                        {{ notification.message }}
+                                    </a>
+                                {% elif 'New proposal for' in notification.message %}
+                                    <a href="{% url 'job:proposals' notification.related_job.id %}" class="hover:underline">
+                                        {{ notification.message }}
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'job:detail' notification.related_job.id %}" class="hover:underline">
+                                        {{ notification.message }}
+                                    </a>
+                                {% endif %}
+                            {% elif notification.notification_type == 'hired' %}
+                                <a href="{% url 'job:detail' notification.related_job.id %}" class="hover:underline">
+                                    {{ notification.message }}
+                                </a>
+                            {% elif notification.notification_type == 'review' %}
+                                <a href="{% url 'job:detail' notification.related_job.id %}" class="hover:underline">
+                                    {{ notification.message }}
+                                </a>
+                            {% elif notification.notification_type == 'contract' %}
+                                {% if 'new contract to sign' in notification.message %}
+                                    <a href="{% url 'dashboard:dashboard' %}" class="hover:underline">
+                                        {{ notification.message }}
+                                    </a>
+                                {% elif 'signed the contract' in notification.message %}
+                                    <a href="{% url 'job:contract' notification.related_job.id notification.related_user.id %}" class="hover:underline">
+                                        {{ notification.message }}
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'job:detail' notification.related_job.id %}" class="hover:underline">
+                                        {{ notification.message }}
+                                    </a>
+                                {% endif %}
+                            {% elif notification.notification_type == 'contract_cancelled' %}
+                                <a href="{% url 'job:detail' notification.related_job.id %}" class="hover:underline">
+                                    {{ notification.message }}
+                                </a>
+                            {% else %}
+                                {{ notification.message|safe }}
+                            {% endif %}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">{{ notification.created_at|timesince }} ago</p>
+                    </div>
+                    {% if not notification.is_read %}
+                        <button class="mark-read-btn text-sm text-green-600 hover:text-green-700 flex-shrink-0 whitespace-nowrap" data-notification-id="{{ notification.id }}">
+                            Mark as read
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <p class="text-gray-500 text-center py-4">No notifications yet</p>
+        {% endfor %}
+    </div>
+</div>
+
+{% csrf_token %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Mark all as read functionality
+        document.getElementById('mark-all-read')?.addEventListener('click', function() {
+            fetch('{% url "dashboard:mark_all_notifications_read" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI
+                    document.querySelectorAll('.mark-read-btn').forEach(btn => btn.remove());
+                    document.querySelectorAll('.bg-green-50').forEach(el => el.classList.remove('bg-green-50'));
+                    document.querySelectorAll('.border-green-200').forEach(el => el.classList.remove('border-green-200'));
+                    document.querySelectorAll('.notification-text').forEach(el => el.classList.remove('font-medium'));
+                    // Update the notification count in the top nav
+                    const notificationCount = document.querySelector('a[href="{% url "dashboard:notifications" %}"] .bg-red-100');
+                    if (notificationCount) {
+                        notificationCount.remove();
+                    }
+                }
+            });
+        });
+
+        // Mark single notification as read
+        document.querySelectorAll('.mark-read-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const notificationId = this.dataset.notificationId;
+                const notificationElement = this.closest('.bg-green-50');
+                const textElement = notificationElement.querySelector('p.text-sm');
+                
+                fetch(`{% url "dashboard:mark_notification_read" 0 %}`.replace('0', notificationId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.remove();
+                        notificationElement.classList.remove('bg-green-50');
+                        notificationElement.classList.remove('border-green-200');
+                        textElement.classList.remove('font-medium');
+                        // Update the notification count in the top nav
+                        const notificationCount = document.querySelector('a[href="{% url "dashboard:notifications" %}"] .bg-red-100');
+                        if (notificationCount) {
+                            const currentCount = parseInt(notificationCount.textContent);
+                            if (currentCount > 1) {
+                                notificationCount.textContent = currentCount - 1;
+                            } else {
+                                notificationCount.remove();
+                            }
+                        }
+                    }
+                });
+            });
+        });
+    });
+</script>
+{% endblock %} 

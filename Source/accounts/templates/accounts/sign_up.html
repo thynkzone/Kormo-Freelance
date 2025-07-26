@@ -1,0 +1,73 @@
+{% extends 'layouts/default/page.html' %}
+
+{% load bootstrap4 %}
+{% load i18n %}
+
+{% block content %}
+
+<style>
+    h3 {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+
+    .btn {
+        padding: 1rem;
+        font-size: 1rem;
+        background: var(--color-green);
+        color: var(--color-white);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .footer {
+        text-align: center;
+        margin-top: 2rem;
+        font-size: 0.9rem;
+    }
+
+    label {
+        margin-top: 15px; /* Adds space between input fields */
+    }
+
+    
+    
+</style>
+</head>
+<body>
+<div class="container">
+    <form method="post">
+        <h3><i class="fa-solid fa-circle-user"></i> {% trans 'Sign Up' %}</h3>
+
+        {% csrf_token %}
+        {% bootstrap_form form %}
+
+        <input type="submit" value="Create Account" class="btn w-100 mt-4">
+
+        <p class="mt-4 text-sm text-gray-600 text-center">
+            By clicking Create Account, you confirm that you have read and agree to our 
+            <a href="{% url 'accounts:terms' %}" class="text-green-600 hover:text-green-700">Terms and Conditions</a> 
+            and 
+            <a href="{% url 'accounts:privacy_policy' %}" class="text-green-600 hover:text-green-700">Privacy Policy</a>
+        </p>
+
+        <div class="footer">
+        <a href="{% url 'accounts:log_in' %}" class="text-links">{% trans 'Already have an account? Log in.' %}</a>
+        <br><br>
+        <span class="fs-4" style="color: #32CD32;">
+            <i class="fa-solid fa-fire-flame-curved"></i>
+        </span>
+        <span class="fs-4 fw-bold text-dark">Kormo</span>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0-alpha1/js/bootstrap.bundle.min.js" integrity="sha512-Sct/LCTfkoqr7upmX9VZKEzXuRk5YulFoDTunGapYJdlCwA+Rl4RhgcPCLf7awTNLmIVrszTPNUFu4MSesep5Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</body>
+</html>
+
+
+{% endblock %}

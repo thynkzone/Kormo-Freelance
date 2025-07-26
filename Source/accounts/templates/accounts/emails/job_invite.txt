@@ -1,0 +1,20 @@
+{% load i18n %}
+
+{% trans "You've Been Invited to a Job!" %}
+
+{% trans "Hello" %} {{ user.username }},
+
+{% trans "You've been invited to apply for a job on Kormo." %}
+
+{% trans "Job Details:" %}
+- {% trans "Title:" %} {{ job.title }}
+- {% trans "Description:" %} {{ job.description|truncatewords:30 }}
+- {% trans "Budget:" %} ৳{{ job.budget }}
+- {% trans "Client:" %} {{ job.created_by.username }}
+
+{% trans "View the job and submit your proposal:" %} {{ job_url }}
+
+{% trans "Don't miss this opportunity! Click the link above to view the job details and submit your proposal." %}
+
+{% trans "Best regards," %}
+{% trans "The Kormo Team" %} 

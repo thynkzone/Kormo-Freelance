@@ -1,0 +1,32 @@
+{% load i18n %}
+
+{% trans "Hello" %} {{ user.username }},
+
+{% trans "Your job" %} {{ job.title }} {% trans "has been reviewed by" %} {{ reviewer.username }}.
+
+{% trans "Rating:" %} {{ rating }}/5
+
+{% trans "Review Details:" %}
+{% if is_client_review %}
+- {% trans "Knowledge Depth:" %} {{ knowledge_depth }}/5
+- {% trans "Fast Turnaround:" %} {{ fast_turnaround }}/5
+- {% trans "Multiple Revisions:" %} {{ multiple_revisions }}/5
+- {% trans "Quality of Work:" %} {{ quality_of_work }}/5
+- {% trans "Responsiveness:" %} {{ responsiveness }}/5
+{% else %}
+- {% trans "Communication:" %} {{ communication }}/5
+- {% trans "Timely Replies:" %} {{ timely_replies }}/5
+- {% trans "Requirements Detail:" %} {{ requirements_detail }}/5
+- {% trans "Instant Feedback:" %} {{ instant_feedback }}/5
+- {% trans "Logical Revisions:" %} {{ logical_revisions }}/5
+{% endif %}
+
+{% trans "Review Comment:" %}
+{{ content }}
+
+{% trans "View the full review here:" %}
+{{ review_url }}
+
+{% trans "Don't forget to leave your review as well!" %}
+
+{% trans "This is an automated message, please do not reply to this email." %} 

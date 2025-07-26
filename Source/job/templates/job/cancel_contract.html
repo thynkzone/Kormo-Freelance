@@ -1,0 +1,39 @@
+{% extends 'layouts/default/base.html' %}
+{% load static %}
+
+{% block title %}Cancel Contract - {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Cancel Contract</h1>
+        
+        <div class="mb-8">
+            <div class="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-6">
+                <p class="font-medium">Warning: This action cannot be undone.</p>
+                <p class="mt-2">Are you sure you want to cancel the contract with {% if freelancer.freelancer %}{{ freelancer.freelancer.fullname }}{% else %}{{ freelancer.username }}{% endif %} for the job "{{ job.title }}"?</p>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Contract Details</h2>
+                <p class="text-gray-600"><strong>Job Title:</strong> {{ job.title }}</p>
+                <p class="text-gray-600"><strong>Freelancer:</strong> {% if freelancer.freelancer %}{{ freelancer.freelancer.fullname }}{% else %}{{ freelancer.username }}{% endif %}</p>
+                <p class="text-gray-600"><strong>Contract Amount:</strong> ${{ contract.amount }}</p>
+                <p class="text-gray-600"><strong>Status:</strong> {{ contract.get_status_display }}</p>
+            </div>
+        </div>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'job:proposals' job.id %}" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    Back to Proposals
+                </a>
+                <button type="submit" class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Cancel Contract
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,104 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}Terms and Conditions{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-6">Terms and Conditions</h1>
+        <p class="text-gray-600 mb-6">Last updated: {{ current_date|date:"F d, Y" }}</p>
+
+        <div class="prose prose-green max-w-none">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
+            <p class="text-gray-600 mb-6">
+                Welcome to Kormo. These terms and conditions outline the rules and regulations for the use of our platform. By accessing this platform, we assume you accept these terms and conditions in full.
+            </p>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">2. User Accounts</h2>
+            <div class="space-y-4 mb-6">
+                <h3 class="text-lg font-medium text-gray-900">2.1 Account Creation</h3>
+                <ul class="list-disc pl-6 text-gray-600 space-y-2">
+                    <li>You must be at least 18 years old to create an account</li>
+                    <li>You must provide accurate and complete information</li>
+                    <li>You are responsible for maintaining the security of your account</li>
+                    <li>You must notify us immediately of any unauthorized use</li>
+                </ul>
+
+                <h3 class="text-lg font-medium text-gray-900">2.2 Account Types</h3>
+                <ul class="list-disc pl-6 text-gray-600 space-y-2">
+                    <li>Freelancer accounts for service providers</li>
+                    <li>Client accounts for service requesters</li>
+                    <li>Each account type has specific privileges and responsibilities</li>
+                </ul>
+            </div>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">3. Platform Usage</h2>
+            <div class="space-y-4 mb-6">
+                <h3 class="text-lg font-medium text-gray-900">3.1 General Rules</h3>
+                <ul class="list-disc pl-6 text-gray-600 space-y-2">
+                    <li>Use the platform in accordance with all applicable laws</li>
+                    <li>Respect other users and their rights</li>
+                    <li>Do not engage in fraudulent or deceptive practices</li>
+                    <li>Do not attempt to manipulate the platform or its systems</li>
+                </ul>
+
+                <h3 class="text-lg font-medium text-gray-900">3.2 Content Guidelines</h3>
+                <ul class="list-disc pl-6 text-gray-600 space-y-2">
+                    <li>Do not post illegal, harmful, or inappropriate content</li>
+                    <li>Respect intellectual property rights</li>
+                    <li>Do not spam or engage in mass messaging</li>
+                    <li>Maintain professional communication</li>
+                </ul>
+            </div>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">4. Services and Payments</h2>
+            <div class="space-y-4 mb-6">
+                <h3 class="text-lg font-medium text-gray-900">4.1 Service Agreements</h3>
+                <ul class="list-disc pl-6 text-gray-600 space-y-2">
+                    <li>All services must be agreed upon through the platform</li>
+                    <li>Use the platform's contract system for all agreements</li>
+                    <li>Follow the platform's payment protection system</li>
+                    <li>Respect the agreed-upon terms of service</li>
+                </ul>
+
+                <h3 class="text-lg font-medium text-gray-900">4.2 Payment Terms</h3>
+                <ul class="list-disc pl-6 text-gray-600 space-y-2">
+                    <li>All payments must be processed through the platform</li>
+                    <li>Platform fees are non-negotiable</li>
+                    <li>Payment disputes must be handled through the platform</li>
+                    <li>Refund policies must be clearly stated in service agreements</li>
+                </ul>
+            </div>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">5. Intellectual Property</h2>
+            <p class="text-gray-600 mb-6">
+                The platform and its original content, features, and functionality are owned by Kormo and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
+            </p>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">6. Limitation of Liability</h2>
+            <p class="text-gray-600 mb-6">
+                Kormo shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the platform.
+            </p>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">7. Termination</h2>
+            <p class="text-gray-600 mb-6">
+                We may terminate or suspend your account and access to the platform immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.
+            </p>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">8. Changes to Terms</h2>
+            <p class="text-gray-600 mb-6">
+                We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect.
+            </p>
+
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">9. Contact Information</h2>
+            <p class="text-gray-600 mb-6">
+                If you have any questions about these Terms, please contact us at:
+            </p>
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <p class="text-gray-600">Email: thynkzone@gmail.com</p>
+                <p class="text-gray-600">Address: Sector 18, Uttara, Dhaka, Bangladesh</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

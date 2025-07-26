@@ -1,0 +1,954 @@
+{% extends 'layouts/default/base.html' %}
+{% load tz %}
+
+{% block title %}{{ job.title }}{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .modal.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .modal-content {
+        background: white;
+        width: 90%;
+        max-width: 600px;
+        margin: auto;
+        border-radius: 12px;
+        transform: translateY(-20px);
+        transition: transform 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal.active .modal-content {
+        transform: translateY(0);
+    }
+
+    .freelancer-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .freelancer-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .hire-btn {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        transition: all 0.3s ease;
+    }
+
+    .hire-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(34, 197, 94, 0.2);
+    }
+
+    .close-modal {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6b7280;
+        transition: color 0.2s ease;
+    }
+
+    .close-modal:hover {
+        color: #374151;
+    }
+
+    /* Remove top margin from first child in .prose */
+    .prose > :first-child { margin-top: 0 !important; }
+    .prose p:first-child { margin-top: 0 !important; }
+
+    .tight-gap {
+        margin-top: -0.75rem;
+    }
+</style>
+
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="md:col-span-2">
+            <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+                <!-- Job Header -->
+                <div class="mb-4 flex items-center justify-between">
+                    <h1 class="text-2xl font-semibold">{{ job.title }}</h1>
+                    <div class="flex items-center gap-2">
+                        {% if user.is_authenticated %}
+                        <button type="button" class="save-job-btn" data-job-id="{{ job.id }}" aria-label="Save Job">
+                            {% if job.id in saved_job_ids %}
+                                <i class="fas fa-bookmark text-green-600"></i>
+                            {% else %}
+                                <i class="far fa-bookmark text-gray-400 hover:text-green-600"></i>
+                            {% endif %}
+                        </button>
+                        {% if user.is_authenticated and job.created_by != user %}
+                        <button type="button" class="report-btn text-gray-400 hover:text-red-600" data-type="job" data-id="{{ job.id }}" aria-label="Report Job">
+                            <i class="fas fa-flag"></i>
+                        </button>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-lg font-medium text-green-600">৳{{ job.budget }}</span>
+                    <span class="text-gray-500">{{ job.category.name }}</span>
+                    <span class="flex items-center text-blue-600 ml-0">
+                        <i class="fas fa-clock mr-1"></i> {{ job.deadline|default:'N/A' }} days
+                    </span>
+                </div>
+                
+                <!-- Mobile Action Card - Only visible on mobile -->
+                <div class="md:hidden mb-6">
+                    <div class="bg-white rounded-lg border border-gray-100 shadow-sm p-6">
+                        {% if job.is_closed or job.already_hired %}
+                            <div class="bg-gray-50 p-4 rounded-lg text-center">
+                                <i class="fas fa-lock text-gray-400 text-2xl mb-2"></i>
+                                <h3 class="font-medium mb-1">This job is closed</h3>
+                                <p class="text-sm text-gray-500">
+                                    {% if job.hired_freelancer %}
+                                        The client has already hired someone for this position.
+                                    {% else %}
+                                        This position is no longer accepting applications.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% elif job.created_by != request.user %}
+                            <h2 class="text-lg font-medium mb-4">Interested in this job?</h2>
+                            <div class="space-y-3">
+                                <a href="{% url 'job:submit_proposal' job.id %}" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                                    Submit Proposal
+                                </a>
+                                <a href="{% url 'conversation:new' 'job' job.id %}" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                                    Contact Client
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if job.created_by == request.user %}
+                            <div class="space-y-3">
+                                {% if not job.already_hired %}
+                                    <a href="{% url 'job:edit' job.id %}" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                                        Edit Job
+                                    </a>
+                                    {% if not job.already_hired and not job.is_closed %}
+                                        <form method="post" action="{% url 'job:close_job' job.id %}" class="mt-3">
+                                            {% csrf_token %}
+                                            <button type="submit" class="block w-full py-3 text-center bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium transition-colors">
+                                                Mark as Closed
+                                            </button>
+                                        </form>
+                                    {% elif not job.already_hired and job.is_closed %}
+                                        <form method="post" action="{% url 'job:open_job' job.id %}" class="mt-3">
+                                            {% csrf_token %}
+                                            <button type="submit" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                                                Mark as Open
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                                <a href="{% url 'job:proposals' job.id %}" class="block w-full py-3 text-center {% if job.already_hired %}bg-blue-600 hover:bg-blue-700{% else %}bg-blue-600 hover:bg-blue-700{% endif %} text-white rounded-lg font-medium transition-colors">
+                                    View Proposals ({{ job.proposals.count }})
+                                </a>
+                            </div>
+                            <!-- Move action buttons here for mobile -->
+                            <div class="mt-4 space-y-3">
+                                {% if job.already_hired %}
+                                    {% if pending_payment %}
+                                        <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                                            <i class="fas fa-clock text-yellow-400 text-2xl mb-2"></i>
+                                            <h3 class="font-medium mb-1">Payment Pending Verification</h3>
+                                            <p class="text-sm text-yellow-600">Your payment is being verified by our team.</p>
+                                        </div>
+                                    {% elif has_rejected_payment %}
+                                        <div class="bg-red-50 p-4 rounded-lg text-center mb-4">
+                                            <i class="fas fa-exclamation-circle text-red-400 text-2xl mb-2"></i>
+                                            <h3 class="font-medium mb-1">Payment Verification Failed</h3>
+                                            <p class="text-sm text-red-600">Your previous payment could not be verified. Please try again.</p>
+                                        </div>
+                                        <a href="{% url 'job:deposit_funds' job.id %}" class="block w-full py-3 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                                            Deposit Funds
+                                        </a>
+                                    {% elif not job.payment_verified and not pending_payment %}
+                                        <a href="{% url 'job:deposit_funds' job.id %}" class="block w-full py-3 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                                            Deposit Funds
+                                        </a>
+                                    {% elif job.payment_verified and not job.completion_date and not has_rejected_payment %}
+                                        <a href="{% url 'job:mark_complete' job.id %}" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                                            Mark Complete
+                                        </a>
+                                        {% if not job.refund_requested and not job.refund_accepted %}
+                                            {% for refund in job.refund_requests.all %}
+                                                {% if refund.status == 'rejected' %}
+                                                    <div class="bg-red-50 p-4 rounded-lg text-center mb-4">
+                                                        <i class="fas fa-times-circle text-red-400 text-2xl mb-2"></i>
+                                                        <h3 class="font-medium mb-1">Refund Request Rejected</h3>
+                                                        <p class="text-sm text-red-600">Your refund request has been rejected by our team.</p>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <a href="{% url 'job:request_refund' job.id %}" class="block w-full py-3 text-center bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors">
+                                                Request Refund
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+                                    {% if job.refund_requested %}
+                                        <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                                            <i class="fas fa-clock text-yellow-400 text-2xl mb-2"></i>
+                                            <h3 class="font-medium mb-1">Refund Request Pending</h3>
+                                            <p class="text-sm text-yellow-600">Your refund request is being investigated by our team. It may take 3-15 days.</p>
+                                        </div>
+                                    {% endif %}
+                                    {% if job.refund_accepted %}
+                                        <div class="bg-green-50 p-4 rounded-lg text-center">
+                                            <i class="fas fa-check-circle text-green-400 text-2xl mb-2"></i>
+                                            <h3 class="font-medium mb-1">Refund Accepted</h3>
+                                            <p class="text-sm text-green-600">Your refund request has been approved. The refund process will begin shortly.</p>
+                                        </div>
+                                    {% endif %}
+                                    {% if job.completion_date %}
+                                        {% if not job.has_client_review %}
+                                            <a href="{% url 'job:create_review' job.id job.hired_freelancer.id %}" class="block w-full py-3 text-center bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium transition-colors">Leave Review</a>
+                                        {% else %}
+                                            <a href="{% url 'job:create_review' job.id job.hired_freelancer.id %}" class="block w-full py-3 text-center bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">Edit Review</a>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        {% elif job.hired_freelancer == request.user %}
+                            <div class="mt-4 space-y-3">
+                                {% if job.completion_date %}
+                                    {% if not job.has_freelancer_review %}
+                                        <a href="{% url 'job:create_review' job.id job.created_by.id %}" class="block w-full py-3 text-center bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium transition-colors">Leave Review</a>
+                                    {% else %}
+                                        <a href="{% url 'job:create_review' job.id job.created_by.id %}" class="block w-full py-3 text-center bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">Edit Review</a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Job Image -->
+                <div class="relative w-full max-w-2xl mx-auto aspect-[4/3] rounded-lg overflow-hidden mb-6">
+                    {% if job.image %}
+                        {% if job.image.name %}
+                            <img src="{{ job.image.url }}" alt="{{ job.title }}" class="w-full h-full object-cover">
+                        {% endif %}
+                    {% else %}
+                        <img src="https://cdn.pixabay.com/photo/2021/10/18/23/07/hiring-6722314_1280.png" alt="{{ job.title }}" class="w-full h-full object-cover">
+                    {% endif %}
+                </div>
+                
+                <!-- Skills -->
+                {% if job.skills.all %}
+                <div class="mb-2">
+                    <h2 class="text-lg font-medium mb-2">Skills Required</h2>
+                    <div class="flex flex-wrap gap-2">
+                        {% for skill in job.skills.all %}
+                            <span class="bg-gray-100 px-3 py-1 rounded-full text-sm">{{ skill.name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Job Description -->
+                <div>
+                    <h2 class="text-lg font-medium mt-4 mb-0">Description</h2>
+                    <div class="prose max-w-none break-words whitespace-pre-wrap tight-gap">
+                        {{ job.description|linebreaks }}
+                    </div>
+                </div>
+
+                <!-- Download Social Media Image Button -->
+                {% if request.user == job.created_by %}
+                <div class="mb-6">
+                    <a href="{% url 'job:social_media_image' job.id %}" class="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Download Static for Social Media Post
+                    </a>
+                </div>
+                {% endif %}
+                
+                <!-- Job Status (for employer or hired freelancer) -->
+                {% if request.user == job.created_by or request.user == job.hired_freelancer %}
+                <div class="border-t border-gray-100 pt-6 mb-6">
+                    <h2 class="text-lg font-medium mb-4">Job Status</h2>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500 mb-1">Hiring Status</p>
+                            <p class="font-medium">
+                                {% if job.is_closed or job.already_hired %}
+                                    {% if job.hired_freelancer %}
+                                        Hired: 
+                                        {% if job.hired_freelancer.freelancer %}
+                                            <a href="{% url 'freelancer:detail' job.hired_freelancer.freelancer.id %}" class="text-green-600 hover:text-green-700">
+                                                {{ job.hired_freelancer.freelancer.fullname }}
+                                            </a>
+                                        {% else %}
+                                            {{ job.hired_freelancer.username }}
+                                        {% endif %}
+                                    {% else %}
+                                        Closed
+                                    {% endif %}
+                                {% else %}
+                                    Open for applications
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <p class="text-sm text-gray-500 mb-1">Payment Status</p>
+                            <p class="font-medium">
+                                {% if pending_payment %}
+                                    <span class="text-yellow-600">Pending Verification</span>
+                                {% elif has_rejected_payment %}
+                                    <span class="text-red-600">Rejected</span>
+                                {% elif job.payment_verified %}
+                                    <span class="text-green-600">Verified</span>
+                                {% elif job.payment_status == 'partial' %}
+                                    <span class="text-blue-600">Partially Paid</span>
+                                {% elif job.payment_status == 'paid' %}
+                                    <span class="text-green-600">Fully Paid</span>
+                                {% else %}
+                                    <span class="text-red-600">Not Paid</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        {% if job.completion_date %}
+                        <div>
+                            <p class="text-sm text-gray-500 mb-1">Completed On</p>
+                            <p class="font-medium">{{ job.completion_date }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if job.has_client_review and job.has_freelancer_review %}
+                        <!-- Remove redundant ratings section -->
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Reviews Section -->
+            {% if job.has_client_review and job.has_freelancer_review %}
+            <div class="mb-6 mt-6">
+                <h2 class="text-lg font-medium mb-4">Reviews</h2>
+                <div class="space-y-6">
+                    {% if client_review %}
+                        <div class="border border-gray-100 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center">
+                                    {% if client_review.reviewer.freelancer.profile_image %}
+                                        <img src="{{ client_review.reviewer.freelancer.profile_image.url }}" class="w-10 h-10 rounded-full mr-3">
+                                    {% else %}
+                                        <img src="https://cdn.pixabay.com/photo/2021/07/02/04/48/user-6380868_1280.png" alt="Profile" class="h-10 w-10 rounded-full">
+                                    {% endif %}
+                                    <div>
+                                        <p class="font-medium">
+                                            {% if client_review.reviewer.freelancer %}
+                                                <a href="{% url 'freelancer:detail' client_review.reviewer.freelancer.id %}" class="text-green-600 hover:text-green-700">
+                                                    {{ client_review.reviewer.freelancer.fullname }}
+                                                </a>
+                                            {% else %}
+                                                {{ client_review.reviewer.username }}
+                                            {% endif %}
+                                        </p>
+                                        <p class="text-sm text-gray-500">
+                                            {% if client_review.reviewer.freelancer %}
+                                                {{ client_review.reviewer.freelancer.title }}
+                                            {% endif %}
+                                        </p>
+                                        <p class="text-sm text-gray-500">{{ client_review.created_at|localtime|date:"F j, Y" }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="flex text-yellow-400 mr-2">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= client_review.rating %}
+                                                <i class="fas fa-star text-sm"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-sm"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <span class="text-sm">{{ client_review.rating|floatformat:1 }}/5</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mb-3">
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Knowledge Depth</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_review.knowledge_depth %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ client_review.knowledge_depth }}/5</span>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Fast Turnaround</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_review.fast_turnaround %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ client_review.fast_turnaround }}/5</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Multiple Revisions</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_review.multiple_revisions %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ client_review.multiple_revisions }}/5</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Quality of Work</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_review.quality_of_work %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ client_review.quality_of_work }}/5</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Responsiveness</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= client_review.responsiveness %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ client_review.responsiveness }}/5</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-gray-700">{{ client_review.content }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if freelancer_review %}
+                        <div class="border border-gray-100 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center">
+                                    {% if freelancer_review.reviewer.freelancer.profile_image %}
+                                        <img src="{{ freelancer_review.reviewer.freelancer.profile_image.url }}" class="w-10 h-10 rounded-full mr-3">
+                                    {% else %}
+                                        <img src="https://cdn.pixabay.com/photo/2021/07/02/04/48/user-6380868_1280.png" alt="Profile" class="h-10 w-10 rounded-full">
+                                    {% endif %}
+                                    <div>
+                                        <p class="font-medium">
+                                            <a href="{% url 'freelancer:detail' freelancer_review.reviewer.freelancer.id %}" class="text-green-600 hover:text-green-700">
+                                                {{ freelancer_review.reviewer.freelancer.fullname }}
+                                            </a>
+                                        </p>
+                                        <p class="text-sm text-gray-500">{{ freelancer_review.reviewer.freelancer.title }}</p>
+                                        <p class="text-sm text-gray-500">{{ freelancer_review.created_at|localtime|date:"F j, Y" }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="flex text-yellow-400 mr-2">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= freelancer_review.rating %}
+                                                <i class="fas fa-star text-sm"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-sm"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <span class="text-sm">{{ freelancer_review.rating|floatformat:1 }}/5</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mb-3">
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Communication</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_review.communication %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ freelancer_review.communication }}/5</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Timely Replies</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_review.timely_replies %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ freelancer_review.timely_replies }}/5</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Requirements Detail</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_review.requirements_detail %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ freelancer_review.requirements_detail }}/5</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Instant Feedback</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_review.instant_feedback %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ freelancer_review.instant_feedback }}/5</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Logical Revisions Ask</p>
+                                    <div class="flex items-center">
+                                        <div class="flex text-yellow-400 mr-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= freelancer_review.logical_revisions %}
+                                                    <i class="fas fa-star text-sm"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-sm"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-sm">{{ freelancer_review.logical_revisions }}/5</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-gray-700">{{ freelancer_review.content }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar - Now visible on all screens -->
+        <div class="md:sticky md:top-6 h-fit">
+            <!-- Action Card - Only visible on desktop -->
+            <div class="hidden md:block bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+                {% if job.is_closed or job.already_hired %}
+                    <div class="bg-gray-50 p-4 rounded-lg text-center">
+                        <i class="fas fa-lock text-gray-400 text-2xl mb-2"></i>
+                        <h3 class="font-medium mb-1">This job is closed</h3>
+                        <p class="text-sm text-gray-500">
+                            {% if job.hired_freelancer %}
+                                The client has already hired someone for this position.
+                            {% else %}
+                                This position is no longer accepting applications.
+                            {% endif %}
+                        </p>
+                    </div>
+                {% elif job.created_by != request.user %}
+                    <h2 class="text-lg font-medium mb-4">Interested in this job?</h2>
+                    <div class="space-y-3">
+                        <a href="{% url 'job:submit_proposal' job.id %}" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                            Submit Proposal
+                        </a>
+                        <a href="{% url 'conversation:new' 'job' job.id %}" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                            Contact Client
+                        </a>
+                    </div>
+                {% endif %}
+                {% if job.created_by == request.user %}
+                    <div class="space-y-3">
+                        {% if not job.already_hired %}
+                            <a href="{% url 'job:edit' job.id %}" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                                Edit Job
+                            </a>
+                            {% if not job.is_closed %}
+                                <form method="post" action="{% url 'job:close_job' job.id %}" class="mt-3">
+                                    {% csrf_token %}
+                                    <button type="submit" class="block w-full py-3 text-center bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium transition-colors">
+                                        Mark as Closed
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{% url 'job:open_job' job.id %}" class="mt-3">
+                                    {% csrf_token %}
+                                    <button type="submit" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                                        Mark as Open
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                        <a href="{% url 'job:proposals' job.id %}" class="block w-full py-3 text-center {% if job.already_hired %}bg-blue-600 hover:bg-blue-700{% else %}bg-blue-600 hover:bg-blue-700{% endif %} text-white rounded-lg font-medium transition-colors">
+                            View Proposals ({{ job.proposals.count }})
+                        </a>
+                    </div>
+                    <!-- Move action buttons here for desktop -->
+                    <div class="mt-4 space-y-3">
+                        {% if job.already_hired %}
+                            {% if pending_payment %}
+                                <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                                    <i class="fas fa-clock text-yellow-400 text-2xl mb-2"></i>
+                                    <h3 class="font-medium mb-1">Payment Pending Verification</h3>
+                                    <p class="text-sm text-yellow-600">Your payment is being verified by our team.</p>
+                                </div>
+                            {% elif has_rejected_payment %}
+                                <div class="bg-red-50 p-4 rounded-lg text-center mb-4">
+                                    <i class="fas fa-exclamation-circle text-red-400 text-2xl mb-2"></i>
+                                    <h3 class="font-medium mb-1">Payment Verification Failed</h3>
+                                    <p class="text-sm text-red-600">Your previous payment could not be verified. Please try again.</p>
+                                </div>
+                                <a href="{% url 'job:deposit_funds' job.id %}" class="block w-full py-3 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                                    Deposit Funds
+                                </a>
+                            {% elif not job.payment_verified and not pending_payment %}
+                                <a href="{% url 'job:deposit_funds' job.id %}" class="block w-full py-3 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                                    Deposit Funds
+                                </a>
+                            {% elif job.payment_verified and not job.completion_date and not has_rejected_payment %}
+                                <a href="{% url 'job:mark_complete' job.id %}" class="block w-full py-3 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                                    Mark Complete
+                                </a>
+                                {% if not job.refund_requested and not job.refund_accepted %}
+                                    {% for refund in job.refund_requests.all %}
+                                        {% if refund.status == 'rejected' %}
+                                            <div class="bg-red-50 p-4 rounded-lg text-center mb-4">
+                                                <i class="fas fa-times-circle text-red-400 text-2xl mb-2"></i>
+                                                <h3 class="font-medium mb-1">Refund Request Rejected</h3>
+                                                <p class="text-sm text-red-600">Your refund request has been rejected by our team.</p>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <a href="{% url 'job:request_refund' job.id %}" class="block w-full py-3 text-center bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors">
+                                        Request Refund
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                            {% if job.refund_requested %}
+                                <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                                    <i class="fas fa-clock text-yellow-400 text-2xl mb-2"></i>
+                                    <h3 class="font-medium mb-1">Refund Request Pending</h3>
+                                    <p class="text-sm text-yellow-600">Your refund request is being investigated by our team. It may take 3-15 days.</p>
+                                </div>
+                            {% endif %}
+                            {% if job.refund_accepted %}
+                                <div class="bg-green-50 p-4 rounded-lg text-center">
+                                    <i class="fas fa-check-circle text-green-400 text-2xl mb-2"></i>
+                                    <h3 class="font-medium mb-1">Refund Accepted</h3>
+                                    <p class="text-sm text-green-600">Your refund request has been approved. The refund process will begin shortly.</p>
+                                </div>
+                            {% endif %}
+                            {% if job.completion_date %}
+                                {% if not job.has_client_review %}
+                                    <a href="{% url 'job:create_review' job.id job.hired_freelancer.id %}" class="block w-full py-3 text-center bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium transition-colors">Leave Review</a>
+                                {% else %}
+                                    <a href="{% url 'job:create_review' job.id job.hired_freelancer.id %}" class="block w-full py-3 text-center bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">Edit Review</a>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% elif job.hired_freelancer == request.user %}
+                    <div class="mt-4 space-y-3">
+                        {% if job.completion_date %}
+                            {% if not job.has_freelancer_review %}
+                                <a href="{% url 'job:create_review' job.id job.created_by.id %}" class="block w-full py-3 text-center bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium transition-colors">Leave Review</a>
+                            {% else %}
+                                <a href="{% url 'job:create_review' job.id job.created_by.id %}" class="block w-full py-3 text-center bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">Edit Review</a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Job Details -->
+            <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm mt-6">
+                <h2 class="text-lg font-medium mb-4">Job Details</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-user-tie text-gray-400 w-5"></i>
+                        <span class="ml-3">
+                            Posted by 
+                            {% if job.created_by.freelancer %}
+                                <a href="{% url 'freelancer:detail' job.created_by.freelancer.id %}" class="text-green-600 hover:text-green-700">
+                                    {{ job.created_by.freelancer.fullname }}
+                                </a>
+                            {% else %}
+                                {{ job.created_by.username }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-calendar text-gray-400 w-5"></i>
+                        <span class="ml-3">Posted on {{ job.created_at|localtime|date:"F j, Y" }}</span>
+                    </div>
+                    
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-layer-group text-gray-400 w-5"></i>
+                        <span class="ml-3">
+                            <a href="{% url 'job:jobs' %}?category={{ job.category.id }}" class="text-green-600 hover:text-green-700">
+                                {{ job.category.name }}
+                            </a>
+                        </span>
+                    </div>
+
+                    <div class="flex items-center py-3 border-b border-gray-100">
+                        <i class="fas fa-clock text-gray-400 w-5"></i>
+                        <span class="ml-3">Deadline: {{ job.deadline|default:'N/A' }} days</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Related Jobs -->
+            {% if related_jobs %}
+            <div class="bg-white p-6 rounded-lg border border-gray-100 shadow-sm mt-6">
+                <h2 class="text-lg font-medium mb-4">Similar Jobs</h2>
+                
+                {% for related_job in related_jobs %}
+                <a href="{% url 'job:detail' related_job.id %}" class="block group">
+                    <div class="flex items-start py-3 border-b border-gray-100 last:border-0 last:pb-0">
+                        <div class="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                            {% if related_job.image %}
+                                {% if related_job.image.name %}
+                                    <img src="{{ related_job.image.url }}" class="w-full h-full object-cover" alt="{{ related_job.title }}">
+                                {% endif %}
+                            {% else %}
+                                <img src="https://cdn.pixabay.com/photo/2021/10/18/23/07/hiring-6722314_1280.png" class="w-full h-full object-contain" alt="{{ related_job.title }}">
+                            {% endif %}
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="font-medium group-hover:text-green-600 transition-colors">{{ related_job.title }}</h3>
+                            <p class="text-green-600 text-sm">৳{{ related_job.budget }}</p>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal" class="modal">
+    <div class="modal-content p-6">
+        <button type="button" class="close-modal">&times;</button>
+        <h2 class="text-xl font-semibold mb-4">Report <span id="reportType"></span></h2>
+        <form id="reportForm" class="space-y-4">
+            <input type="hidden" id="reportTypeInput" name="report_type">
+            <input type="hidden" id="reportIdInput" name="report_id">
+            
+            <div>
+                <label for="reason" class="block text-sm font-medium text-gray-700 mb-1">Reason for Report</label>
+                <select id="reason" name="reason" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" required>
+                    <option value="">Select a reason</option>
+                    <option value="inappropriate_content">Inappropriate Content</option>
+                    <option value="spam">Spam or Scam</option>
+                    <option value="fake_profile">Fake Profile</option>
+                    <option value="harassment">Harassment</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="explanation" class="block text-sm font-medium text-gray-700 mb-1">Additional Details</label>
+                <textarea id="explanation" name="explanation" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Please provide more details about your report..." required></textarea>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="closeReportModal()">Cancel</button>
+                <button type="submit" class="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700">Submit Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function updateBookmarkIcon(btn, saved) {
+        if (saved) {
+            btn.innerHTML = '<i class="fas fa-bookmark text-green-600"></i>';
+        } else {
+            btn.innerHTML = '<i class="far fa-bookmark text-gray-400"></i>';
+        }
+    }
+    document.querySelectorAll('.save-job-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const jobId = btn.getAttribute('data-job-id');
+            const isSaved = btn.querySelector('.fa-bookmark')?.classList.contains('fas');
+            const url = isSaved ? "{% url 'job:unsave_job' 0 %}".replace('0', jobId) : "{% url 'job:save_job' 0 %}".replace('0', jobId);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    updateBookmarkIcon(btn, data.saved);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+});
+
+// Report Modal Functionality
+const reportModal = document.getElementById('reportModal');
+const reportForm = document.getElementById('reportForm');
+const reportTypeSpan = document.getElementById('reportType');
+const reportTypeInput = document.getElementById('reportTypeInput');
+const reportIdInput = document.getElementById('reportIdInput');
+
+function openReportModal(type, id) {
+    reportTypeSpan.textContent = type === 'job' ? 'Job' : 'Freelancer';
+    reportTypeInput.value = type;
+    reportIdInput.value = id;
+    reportModal.classList.add('active');
+}
+
+function closeReportModal() {
+    reportModal.classList.remove('active');
+    reportForm.reset();
+}
+
+document.querySelectorAll('.report-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const type = btn.dataset.type;
+        const id = btn.dataset.id;
+        openReportModal(type, id);
+    });
+});
+
+document.querySelector('.close-modal').addEventListener('click', closeReportModal);
+
+reportForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(reportForm);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const reportUrl = "{% url 'job:submit_report' %}";
+    try {
+        const response = await fetch(reportUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                report_type: formData.get('report_type'),
+                report_id: formData.get('report_id'),
+                reason: formData.get('reason'),
+                explanation: formData.get('explanation'),
+            }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Thank you for your report. We will review it shortly.');
+            closeReportModal();
+        } else {
+            alert(data.error || 'An error occurred while submitting your report.');
+        }
+    } catch (error) {
+        console.error('Error submitting report:', error);
+        alert('An error occurred while submitting your report.');
+    }
+});
+</script>
+{% endblock %}

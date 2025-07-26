@@ -1,0 +1,368 @@
+{% extends 'layouts/default/base.html' %}
+{% load static %}
+{% load tz %}
+
+{% block title %}Proposals - {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Add CSRF token -->
+    {% csrf_token %}
+    
+    <!-- Job Title and Status -->
+    <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ job.title }}</h1>
+            <p class="text-gray-600 mt-1">Review and manage proposals for your job posting</p>
+        </div>
+        <a href="{% url 'job:detail' job.id %}" class="px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+            <i class="fas fa-briefcase mr-1"></i> View Job Details
+        </a>
+    </div>
+
+    <!-- Tabs and Search -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 overflow-hidden">
+        <div class="p-4 border-b border-gray-200">
+            <!-- Status Tabs -->
+            <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 mb-4 text-base md:text-base">
+                <a href="?status=all" class="px-4 py-2 rounded-full {% if current_status == 'all' %}bg-green-100 text-green-700{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                    All Proposals ({{ total_count }})
+                </a>
+                <a href="?status=shortlisted" class="px-4 py-2 rounded-full {% if current_status == 'shortlisted' %}bg-green-100 text-green-700{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                    Shortlisted ({{ shortlisted_count }})
+                </a>
+                <a href="?status=messaged" class="px-4 py-2 rounded-full {% if current_status == 'messaged' %}bg-green-100 text-green-700{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                    Messaged ({{ messaged_count }})
+                </a>
+                <a href="?status=archived" class="px-4 py-2 rounded-full {% if current_status == 'archived' %}bg-green-100 text-green-700{% else %}text-gray-600 hover:text-gray-900{% endif %}">
+                    Archived ({{ archived_count }})
+                </a>
+            </div>
+
+            <!-- Search and Filters -->
+            <div class="flex items-center justify-between">
+                <div class="flex-1 max-w-lg">
+                    <form method="get" class="relative">
+                        <input type="hidden" name="status" value="{{ current_status }}">
+                        <input type="hidden" name="sort" value="{{ current_sort }}">
+                        <input 
+                            type="text" 
+                            name="q" 
+                            value="{{ search_query }}"
+                            placeholder="Search freelancers..."
+                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        >
+                        <div class="absolute left-3 top-2.5 text-gray-400">
+                            <i class="fas fa-search"></i>
+                        </div>
+                    </form>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <form method="get" id="sort-form">
+                            <input type="hidden" name="status" value="{{ current_status }}">
+                            <input type="hidden" name="q" value="{{ search_query }}">
+                            <select 
+                                name="sort" 
+                                class="appearance-none pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                onchange="this.form.submit()"
+                            >
+                                <option value="best_match" {% if current_sort == 'best_match' %}selected{% endif %}>Best match</option>
+                                <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Newest first</option>
+                                <option value="oldest" {% if current_sort == 'oldest' %}selected{% endif %}>Oldest first</option>
+                                <option value="lowest_bid" {% if current_sort == 'lowest_bid' %}selected{% endif %}>Lowest bid</option>
+                                <option value="highest_bid" {% if current_sort == 'highest_bid' %}selected{% endif %}>Highest bid</option>
+                            </select>
+                            <div class="absolute right-3 top-3 text-gray-400 pointer-events-none">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proposals List -->
+        <div class="divide-y divide-gray-200">
+            {% for proposal in proposals %}
+            <div class="p-4 md:p-6 w-full" data-proposal-id="{{ proposal.id }}">
+                <div class="flex items-start space-x-4">
+                    <!-- Freelancer Info -->
+                    <div class="flex-shrink-0">
+                        {% if proposal.freelancer.freelancer and proposal.freelancer.freelancer.profile_image %}
+                            <img src="{{ proposal.freelancer.freelancer.profile_image.url }}" class="w-12 h-12 rounded-full">
+                        {% else %}
+                            <img src="https://ui-avatars.com/api/?name={{ proposal.freelancer.username|urlencode }}&background=10B981&color=ffffff" class="w-12 h-12 rounded-full">
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Proposal Content -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-900">
+                                    {% if proposal.freelancer.freelancer %}
+                                        <a href="{% url 'freelancer:detail' proposal.freelancer.freelancer.id %}" class="hover:text-green-600">
+                                            {{ proposal.freelancer.freelancer.fullname }}
+                                        </a>
+                                    {% else %}
+                                        {{ proposal.freelancer.username }}
+                                    {% endif %}
+                                </h3>
+                                <p class="text-sm text-gray-500">
+                                    {% if proposal.freelancer.freelancer %}
+                                        {{ proposal.freelancer.freelancer.title }}
+                                    {% endif %}
+                                </p>
+                                <!-- Rating and Jobs Count -->
+                                {% if proposal.freelancer.freelancer and proposal.freelancer.freelancer.rating %}
+                                    <div class="flex items-center text-sm text-gray-500 mt-1">
+                                        <i class="fas fa-star text-yellow-400 mr-1"></i>
+                                        <span>{{ proposal.freelancer.freelancer.rating|floatformat:1 }} ({{ proposal.freelancer_completed_jobs }} job{{ proposal.freelancer_completed_jobs|pluralize }})</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="text-right">
+                                {% if proposal.active_contract and proposal.active_contract.status == 'freelancer_signed' %}
+                                    <p class="text-lg font-medium text-green-600">৳{{ proposal.active_contract.amount }}</p>
+                                    <p class="text-sm text-gray-500">Contract Amount</p>
+                                {% else %}
+                                    <p class="text-lg font-medium text-green-600">৳{{ proposal.proposed_amount }}</p>
+                                    <p class="text-sm text-gray-500">Proposed Amount</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Cover Letter -->
+                        <div class="mt-2 text-sm text-gray-700 break-words">
+                            {% if proposal.cover_letter|length > 300 %}
+                                <span class="proposal-short">{{ proposal.cover_letter|slice:":300" }}...</span>
+                                <span class="proposal-full hidden">{{ proposal.cover_letter|linebreaks }}</span>
+                                <a href="#" class="read-more text-green-600 ml-2">Read more</a>
+                            {% else %}
+                                {{ proposal.cover_letter|linebreaks }}
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center space-x-4 text-sm">
+                                <span class="text-gray-500">
+                                    <i class="far fa-clock mr-1"></i>
+                                    Submitted {{ proposal.created_at|localtime|timesince }} ago
+                                </span>
+                                {% if proposal.freelancer.freelancer %}
+                                    <span class="text-gray-500">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>
+                                        {{ proposal.freelancer.freelancer.location }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                {% if proposal.status != 'hired' %}
+                                    <button 
+                                        class="shortlist-btn px-4 py-2 text-sm {% if proposal.status == 'shortlisted' %}bg-yellow-100 text-yellow-700{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} rounded-lg transition-colors"
+                                    >
+                                        {% if proposal.status == 'shortlisted' %}
+                                            <i class="fas fa-star mr-1"></i> Shortlisted
+                                        {% else %}
+                                            <i class="far fa-star mr-1"></i> Shortlist
+                                        {% endif %}
+                                    </button>
+                                    
+                                    {% if proposal.freelancer.freelancer %}
+                                        <a href="{% url 'conversation:new' 'freelancer' proposal.freelancer.freelancer.id %}" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                            <i class="far fa-comment mr-1"></i> Message
+                                        </a>
+                                    {% else %}
+                                        <button 
+                                            onclick="alert('This user hasn\'t created their freelancer profile yet. They need to complete their profile before you can message them.')"
+                                            class="px-4 py-2 text-sm bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+                                            disabled
+                                        >
+                                            <i class="far fa-comment mr-1"></i> Message
+                                        </button>
+                                    {% endif %}
+                                    
+                                    {% with active_contract=proposal.active_contract %}
+                                        {% if active_contract %}
+                                            {% if active_contract.status == 'pending' %}
+                                                <a href="{% url 'job:contract' job.id proposal.freelancer.id %}" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                                                    <i class="fas fa-file-signature mr-1"></i> Sign Contract
+                                                </a>
+                                            {% elif active_contract.status == 'client_signed' %}
+                                                {% if proposal.remaining_cancel_time == 0 %}
+                                                    <a href="{% url 'job:cancel_contract' job.id proposal.freelancer.id %}" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                                        <i class="fas fa-times mr-1"></i> Cancel Contract
+                                                    </a>
+                                                {% else %}
+                                                    <span class="px-4 py-2 text-sm bg-green-50 text-green-700 rounded-lg">
+                                                        <i class="fas fa-clock mr-1"></i> Waiting for Freelancer ({{ proposal.remaining_cancel_time }}h remaining)
+                                                    </span>
+                                                {% endif %}
+                                            {% elif active_contract.status == 'freelancer_signed' %}
+                                                <span class="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg">
+                                                    <i class="fas fa-check-circle mr-1"></i> Contract Signed
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if not job.already_hired %}
+                                                <a href="{% url 'job:create_contract' job.id proposal.freelancer.id %}" class="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
+                                                    <i class="fas fa-file-contract mr-1"></i> Create Contract
+                                                </a>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endwith %}
+                                    
+                                    <button 
+                                        class="archive-btn px-4 py-2 text-sm {% if proposal.status == 'archived' %}bg-red-100 text-red-700{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} rounded-lg transition-colors"
+                                    >
+                                        <i class="far fa-trash-alt mr-1"></i> Archive
+                                    </button>
+                                {% endif %}
+                                {% if proposal.active_contract %}
+                                    <a href="{% url 'job:contract' job.id proposal.freelancer.id %}" class="px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                                        <i class="fas fa-file-contract mr-1"></i> View Contract
+                                    </a>
+                                {% endif %}
+                                {% if proposal.status == 'hired' %}
+                                    <span class="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg">
+                                        <i class="fas fa-check-circle mr-1"></i> Hired
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-6 text-center">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                    <i class="fas fa-file-alt text-2xl text-gray-400"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900">No proposals yet</h3>
+                <p class="mt-1 text-gray-500">Share your job posting to attract qualified freelancers</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle shortlist button clicks
+    document.querySelectorAll('.shortlist-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const proposalId = this.closest('[data-proposal-id]').dataset.proposalId;
+            const isShortlisted = this.classList.contains('bg-yellow-100');
+            const newStatus = isShortlisted ? 'pending' : 'shortlisted';
+            
+            // Make AJAX request to update status
+            fetch(`/jobs/{{ job.id }}/proposals/${proposalId}/status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: `status=${newStatus}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update button appearance
+                    if (newStatus === 'shortlisted') {
+                        this.classList.remove('bg-gray-100', 'text-gray-700');
+                        this.classList.add('bg-yellow-100', 'text-yellow-700');
+                        this.innerHTML = '<i class="fas fa-star mr-1"></i> Shortlisted';
+                    } else {
+                        this.classList.remove('bg-yellow-100', 'text-yellow-700');
+                        this.classList.add('bg-gray-100', 'text-gray-700');
+                        this.innerHTML = '<i class="far fa-star mr-1"></i> Shortlist';
+                    }
+                    // Reload the page to refresh the proposals list
+                    location.reload();
+                    // Update messaged count if available
+                    if (data.messaged_count !== undefined) {
+                        document.querySelector('a[href="?status=messaged"]').textContent = 'Messaged (' + data.messaged_count + ')';
+                    }
+                } else {
+                    console.error('Error updating status:', data.error);
+                    alert('Error updating proposal status: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating proposal status. Please try again.');
+            });
+        });
+    });
+
+    // Handle archive button clicks
+    document.querySelectorAll('.archive-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const proposalId = this.closest('[data-proposal-id]').dataset.proposalId;
+            const isArchived = this.classList.contains('bg-red-100');
+            const newStatus = isArchived ? 'pending' : 'archived';
+            
+            // Make AJAX request to update status
+            fetch(`/jobs/{{ job.id }}/proposals/${proposalId}/status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: `status=${newStatus}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update button appearance
+                    if (newStatus === 'archived') {
+                        this.classList.remove('bg-gray-100', 'text-gray-700');
+                        this.classList.add('bg-red-100', 'text-red-700');
+                        this.innerHTML = '<i class="far fa-trash-alt mr-1"></i> Archived';
+                    } else {
+                        this.classList.remove('bg-red-100', 'text-red-700');
+                        this.classList.add('bg-gray-100', 'text-gray-700');
+                        this.innerHTML = '<i class="far fa-trash-alt mr-1"></i> Archive';
+                    }
+                    // Reload the page to refresh the proposals list
+                    location.reload();
+                    // Update messaged count if available
+                    if (data.messaged_count !== undefined) {
+                        document.querySelector('a[href="?status=messaged"]').textContent = 'Messaged (' + data.messaged_count + ')';
+                    }
+                } else {
+                    console.error('Error updating status:', data.error);
+                    alert('Error updating proposal status: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating proposal status. Please try again.');
+            });
+        });
+    });
+
+    document.querySelectorAll('.read-more').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const parent = btn.closest('div');
+            parent.querySelector('.proposal-short').classList.add('hidden');
+            parent.querySelector('.proposal-full').classList.remove('hidden');
+            btn.style.display = 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

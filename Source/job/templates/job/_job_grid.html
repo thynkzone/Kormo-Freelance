@@ -1,0 +1,124 @@
+{% load i18n %}
+
+{% csrf_token %}
+
+{% for job in jobs %}
+<div class="h-full">
+  <a href="{% url 'job:detail' job.id %}" class="block h-full">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow relative h-full flex flex-col">
+      <!-- Save button -->
+      {% if user.is_authenticated %}
+      <button type="button" class="absolute top-4 right-4 save-job-btn" data-job-id="{{ job.id }}" aria-label="Save Job">
+        {% if job.id in saved_job_ids %}
+          <i class="fas fa-bookmark text-green-600"></i>
+        {% else %}
+          <i class="far fa-bookmark text-gray-400 hover:text-green-600"></i>
+        {% endif %}
+      </button>
+      {% endif %}
+      
+      <div class="flex-grow">
+        <p class="text-sm text-gray-500 mb-1">{{ job.category.name }}</p>
+        <h3 class="text-base font-medium text-green-600 truncate">{{ job.title }}</h3>
+        <p class="text-sm text-gray-400 mt-1">{% blocktrans with time_since=job.created_at|timesince %}Posted {{ time_since }} ago{% endblocktrans %}</p>
+        
+        {% if job.skills.all %}
+        <div class="mt-3 flex flex-col items-start gap-2">
+          {% for skill in job.skills.all|slice:':2' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+              {{ skill.name }}
+            </span>
+          {% endfor %}
+          {% if job.skills.all|length > 2 %}
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+              +{{ job.skills.all|length|add:"-2" }}
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="mt-3 pt-3 border-t border-gray-100">
+        <div class="grid grid-cols-3 divide-x divide-gray-200 text-center">
+          <div class="p-2">
+            <p class="font-bold text-green-600 text-md">৳{{ job.budget }}</p>
+            <p class="text-xs text-gray-500">{% trans "Budget" %}</p>
+          </div>
+          <div class="p-2">
+            <p class="font-bold text-md">{{ job.skills.all.count }}</p>
+            <p class="text-xs text-gray-500">{% trans "Skills" %}</p>
+          </div>
+          <div class="p-2">
+            {% if job.proposals.count < 5 %}
+            <p class="font-bold text-md">0 - 5</p>
+            {% elif job.proposals.count < 10 %}
+            <p class="font-bold text-md">5 - 10</p>
+            {% else %}
+            <p class="font-bold text-md">10+</p>
+            {% endif %}
+            <p class="text-xs text-gray-500">{% trans "Proposals" %}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </a>
+</div>
+{% empty %}
+<div class="col-span-full">
+    <div class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">{% trans "No jobs found" %}</h3>
+        <p class="mt-1 text-sm text-gray-500">{% trans "Try adjusting your search or filter criteria" %}</p>
+    </div>
+</div>
+{% endfor %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function updateBookmarkIcon(btn, saved) {
+        if (saved) {
+            btn.innerHTML = '<i class="fas fa-bookmark text-green-600"></i>';
+        } else {
+            btn.innerHTML = '<i class="far fa-bookmark text-gray-400"></i>';
+        }
+    }
+
+    document.querySelectorAll('.save-job-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const jobId = btn.getAttribute('data-job-id');
+            const isSaved = btn.querySelector('.fa-bookmark')?.classList.contains('fas');
+            const url = isSaved ? "{% url 'job:unsave_job' 0 %}".replace('0', jobId) : "{% url 'job:save_job' 0 %}".replace('0', jobId);
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    updateBookmarkIcon(btn, data.saved);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+});
+</script>
+{% endblock %} 

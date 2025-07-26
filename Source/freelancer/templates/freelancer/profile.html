@@ -1,0 +1,124 @@
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">About</h2>
+                    <p class="text-gray-600">{{ freelancer.bio }}</p>
+                    
+                    <div class="mt-6 grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-sm font-medium text-gray-500">Completed Jobs</h3>
+                            <p class="text-2xl font-semibold text-gray-900">{{ freelancer.hired_jobs.filter(completion_date__isnull=False).count }}</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-sm font-medium text-gray-500">Active Jobs</h3>
+                            <p class="text-2xl font-semibold text-gray-900">{{ freelancer.hired_jobs.filter(completion_date__isnull=True).count }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reviews Section -->
+                <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Reviews</h2>
+                    
+                    {% if freelancer.reviews_received.all %}
+                        {% for review in freelancer.reviews_received.all %}
+                            {% if review.job.has_client_review and review.job.has_freelancer_review %}
+                                <div class="border-b border-gray-100 last:border-0 py-4 last:py-0">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center">
+                                            <img src="{{ review.reviewer.freelancer.profile_image.url }}" class="w-10 h-10 rounded-full mr-3">
+                                            <div>
+                                                <p class="font-medium">{{ review.reviewer.freelancer.fullname }}</p>
+                                                <p class="text-sm text-gray-500">{{ review.created_at|date:"F j, Y" }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-4 mb-3">
+                                        <div>
+                                            <p class="text-sm text-gray-500 mb-1">Knowledge Depth</p>
+                                            <div class="flex items-center">
+                                                <div class="flex text-yellow-400 mr-2">
+                                                    {% for i in "12345" %}
+                                                        {% if forloop.counter <= review.knowledge_depth %}
+                                                            <i class="fas fa-star text-sm"></i>
+                                                        {% else %}
+                                                            <i class="far fa-star text-sm"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <span class="text-sm">{{ review.knowledge_depth }}/5</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <p class="text-sm text-gray-500 mb-1">Fast Turnaround</p>
+                                            <div class="flex items-center">
+                                                <div class="flex text-yellow-400 mr-2">
+                                                    {% for i in "12345" %}
+                                                        {% if forloop.counter <= review.fast_turnaround %}
+                                                            <i class="fas fa-star text-sm"></i>
+                                                        {% else %}
+                                                            <i class="far fa-star text-sm"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <span class="text-sm">{{ review.fast_turnaround }}/5</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p class="text-sm text-gray-500 mb-1">Multiple Revisions</p>
+                                            <div class="flex items-center">
+                                                <div class="flex text-yellow-400 mr-2">
+                                                    {% for i in "12345" %}
+                                                        {% if forloop.counter <= review.multiple_revisions %}
+                                                            <i class="fas fa-star text-sm"></i>
+                                                        {% else %}
+                                                            <i class="far fa-star text-sm"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <span class="text-sm">{{ review.multiple_revisions }}/5</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p class="text-sm text-gray-500 mb-1">Quality of Work</p>
+                                            <div class="flex items-center">
+                                                <div class="flex text-yellow-400 mr-2">
+                                                    {% for i in "12345" %}
+                                                        {% if forloop.counter <= review.quality_of_work %}
+                                                            <i class="fas fa-star text-sm"></i>
+                                                        {% else %}
+                                                            <i class="far fa-star text-sm"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <span class="text-sm">{{ review.quality_of_work }}/5</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p class="text-sm text-gray-500 mb-1">Responsiveness</p>
+                                            <div class="flex items-center">
+                                                <div class="flex text-yellow-400 mr-2">
+                                                    {% for i in "12345" %}
+                                                        {% if forloop.counter <= review.responsiveness %}
+                                                            <i class="fas fa-star text-sm"></i>
+                                                        {% else %}
+                                                            <i class="far fa-star text-sm"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <span class="text-sm">{{ review.responsiveness }}/5</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <p class="text-gray-700">{{ review.content }}</p>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500 text-center py-4">No reviews yet</p>
+                    {% endif %}
+                </div> 

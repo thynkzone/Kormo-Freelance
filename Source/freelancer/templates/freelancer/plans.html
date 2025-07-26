@@ -1,0 +1,104 @@
+{% extends 'layouts/default/base.html' %}
+{% load static %}
+
+{% block title %}Subscription Plans{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Choose Your Plan</h1>
+        {% if pending %}
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.257 3.099c.366-.446.957-.533 1.403-.167.446.366.533.957.167 1.403l-5.5 6.5A1 1 0 004 12h12a1 1 0 00.832-1.555l-5.5-6.5z" /></svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700 font-semibold">Your payment is pending verification. Please wait for admin approval.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if rejected %}
+        <div class="bg-orange-50 border-l-4 border-orange-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-orange-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.257 3.099c.366-.446.957-.533 1.403-.167.446.366.533.957.167 1.403l-5.5 6.5A1 1 0 004 12h12a1 1 0 00.832-1.555l-5.5-6.5z" /></svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-orange-700 font-semibold">Your last payment request could not be verified. Please try submitting again with a valid transaction ID.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if error %}
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.257 3.099c.366-.446.957-.533 1.403-.167.446.366.533.957.167 1.403l-5.5 6.5A1 1 0 004 12h12a1 1 0 00.832-1.555l-5.5-6.5z" /></svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700 font-semibold">{{ error }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <!-- Free Plan -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-2 {% if current_plan == 'free' %}border-green-600{% else %}border-gray-100{% endif %}">
+                <h2 class="text-xl font-bold mb-2">Free Plan {% if current_plan == 'free' %}<span class="text-green-600 text-xs">(Active)</span>{% endif %}</h2>
+                <ul class="text-gray-700 mb-4">
+                    <li>5 proposals / month</li>
+                    <li>5 job posts / month</li>
+                </ul>
+                <div class="text-2xl font-bold mb-2">৳0</div>
+                <div class="text-xs text-gray-500">No payment required</div>
+            </div>
+            <!-- Member Plan -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-2 {% if current_plan == 'member' %}border-green-600{% else %}border-gray-100{% endif %}">
+                <h2 class="text-xl font-bold mb-2">Member Plan {% if current_plan == 'member' %}<span class="text-green-600 text-xs">(Active)</span>{% endif %}</h2>
+                <ul class="text-gray-700 mb-4">
+                    <li>30 proposals / month</li>
+                    <li>10 job posts / month</li>
+                </ul>
+                <div class="text-2xl font-bold mb-2">৳150</div>
+                <div class="text-xs text-gray-500 mb-2">per month</div>
+                {% if current_plan != 'member' %}
+                <form method="post" class="space-y-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan" value="member">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">bKash Transaction ID</label>
+                        <input type="text" name="transaction_id" maxlength="10" pattern="[0-9]{10}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-4 py-2">
+                        <p class="text-xs text-gray-500 mt-1">Send ৳150 to <span class="font-bold">01765381798</span> (bKash Personal/Send Money) and enter the 10-digit Trxn ID.</p>
+                    </div>
+                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">Pay & Upgrade</button>
+                </form>
+                {% endif %}
+            </div>
+            <!-- Pro Plan -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-2 {% if current_plan == 'pro' %}border-green-600{% else %}border-gray-100{% endif %}">
+                <h2 class="text-xl font-bold mb-2">Pro Plan {% if current_plan == 'pro' %}<span class="text-green-600 text-xs">(Active)</span>{% endif %}</h2>
+                <ul class="text-gray-700 mb-4">
+                    <li>60 proposals / month</li>
+                    <li>20 job posts / month</li>
+                </ul>
+                <div class="text-2xl font-bold mb-2">৳350</div>
+                <div class="text-xs text-gray-500 mb-2">per month</div>
+                {% if current_plan != 'pro' %}
+                <form method="post" class="space-y-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan" value="pro">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">bKash Transaction ID</label>
+                        <input type="text" name="transaction_id" maxlength="10" pattern="[0-9]{10}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm px-4 py-2">
+                        <p class="text-xs text-gray-500 mt-1">Send ৳350 to <span class="font-bold">01765381798</span> (bKash Personal/Send Money) and enter the 10-digit Trxn ID.</p>
+                    </div>
+                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">Pay & Upgrade</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

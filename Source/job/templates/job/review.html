@@ -1,0 +1,187 @@
+{% extends 'layouts/default/base.html' %}
+{% load static %}
+
+{% block title %}{% if review %}Edit{% else %}Leave a{% endif %} Review - {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">{% if review %}Edit{% else %}Leave a{% endif %} Review</h1>
+            <p class="text-gray-600">{% if review %}Update your review for{% else %}Share your experience working with{% endif %} {% if reviewer == job.created_by %}{{ job.hired_freelancer.freelancer.fullname }}{% else %}{{ job.created_by.username }}{% endif %}</p>
+        </div>
+        
+        <form method="post" class="space-y-8">
+            {% csrf_token %}
+            
+            {% if reviewer == job.created_by %}
+                <div class="space-y-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Rate the Freelancer (1=Poor, 5=Great)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Knowledge Depth</label>
+                            <p class="text-sm text-gray-500 mb-2">How well did they understand the requirements?</p>
+                            {{ form.knowledge_depth }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Fast Turnaround</label>
+                            <p class="text-sm text-gray-500 mb-2">How quickly did they complete the work?</p>
+                            {{ form.fast_turnaround }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Multiple Revisions</label>
+                            <p class="text-sm text-gray-500 mb-2">How willing were they to make changes?</p>
+                            {{ form.multiple_revisions }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Quality of Work</label>
+                            <p class="text-sm text-gray-500 mb-2">How satisfied were you with the final result?</p>
+                            {{ form.quality_of_work }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Responsiveness</label>
+                            <p class="text-sm text-gray-500 mb-2">How quickly did they respond to messages?</p>
+                            {{ form.responsiveness }}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="space-y-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Rate the Client (1=Poor, 5=Great)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Communication</label>
+                            <p class="text-sm text-gray-500 mb-2">How clear was their communication?</p>
+                            {{ form.communication }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Timely Replies</label>
+                            <p class="text-sm text-gray-500 mb-2">How quickly did they respond to your messages?</p>
+                            {{ form.timely_replies }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Requirements Detail</label>
+                            <p class="text-sm text-gray-500 mb-2">How detailed were their requirements?</p>
+                            {{ form.requirements_detail }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Instant Feedback</label>
+                            <p class="text-sm text-gray-500 mb-2">How quickly did they provide feedback?</p>
+                            {{ form.instant_feedback }}
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-lg font-medium text-gray-700">Logical Revisions</label>
+                            <p class="text-sm text-gray-500 mb-2">How reasonable were their revision requests?</p>
+                            {{ form.logical_revisions }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold text-gray-800">Your Review</h2>
+                <div class="space-y-2">
+                    <label class="block text-lg font-medium text-gray-700">Feedback</label>
+                    <p class="text-sm text-gray-500 mb-2">Share your detailed experience working together</p>
+                    {{ form.content }}
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'job:detail' job.id %}" class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" id="submit-review" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center">
+                    <span class="submit-text">Submit Review</span>
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+select {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+    background-color: white;
+    color: #374151;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+    background-color: white;
+    color: #374151;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const submitButton = document.getElementById('submit-review');
+    const submitText = submitButton.querySelector('.submit-text');
+    const loadingSpinner = submitButton.querySelector('svg');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Disable the submit button and show loading state
+        submitButton.disabled = true;
+        submitText.textContent = 'Submitting...';
+        loadingSpinner.classList.remove('hidden');
+        
+        // Submit the form
+        this.submit();
+    });
+    
+    const ratingInputs = document.querySelectorAll('select');
+    const averageRating = document.getElementById('average-rating');
+    
+    function updateAverageRating() {
+        let sum = 0;
+        let count = 0;
+        
+        ratingInputs.forEach(input => {
+            if (input.value) {
+                sum += parseInt(input.value);
+                count++;
+            }
+        });
+        
+        if (count > 0) {
+            const average = sum / count;
+            averageRating.textContent = average.toFixed(1);
+        }
+    }
+    
+    ratingInputs.forEach(input => {
+        input.addEventListener('change', updateAverageRating);
+    });
+});
+</script>
+{% endblock %} 

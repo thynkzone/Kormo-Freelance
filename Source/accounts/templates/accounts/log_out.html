@@ -1,0 +1,36 @@
+{% extends 'layouts/default/page.html' %}
+
+{% load i18n %}
+
+{% block content %}
+
+</head>
+<body>
+
+    <div class="container">
+
+        <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
+        <dotlottie-player src="https://lottie.host/a029d10f-e771-4fd8-9a2b-123ae3c52ca7/zMiT6SI600.lottie" background="transparent" speed="1" style="width: 320px; height: 320px" loop autoplay></dotlottie-player>
+    
+        <h4 style="text-align: center;">{% trans 'Logged out' %}</h4>
+
+    <p style="text-align: center;">
+        {% trans 'Thanks for spending some quality time with us today. Take a break. You deserve it.' %}
+    </p>
+
+    <div class="footer" style="text-align: center;">
+        <a href="{% url 'accounts:log_in' %}" class="text-links"><button class="btn btn-success w-100 mt-4">{% trans 'Log Back In' %}</button></a>
+        <br><br>
+        <span class="fs-4" style="color: #32CD32;">
+            <i class="fa-solid fa-fire-flame-curved"></i>
+        </span>
+        <span class="fs-4 fw-bold text-dark">Kormo</span>
+    </div>
+
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0-alpha1/js/bootstrap.bundle.min.js" integrity="sha512-Sct/LCTfkoqr7upmX9VZKEzXuRk5YulFoDTunGapYJdlCwA+Rl4RhgcPCLf7awTNLmIVrszTPNUFu4MSesep5Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</body>
+</html>
+
+{% endblock %}

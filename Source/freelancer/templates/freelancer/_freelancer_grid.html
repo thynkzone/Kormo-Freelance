@@ -1,0 +1,104 @@
+{% load i18n %}
+
+{% for freelancer in freelancers %}
+<div class="h-full">
+    <a href="{% url 'freelancer:detail' freelancer.id %}" class="block h-full">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow h-full flex flex-col">
+            <div class="flex-grow">
+                <h3 class="text-base font-medium text-green-600 truncate">{{ freelancer.fullname }}</h3>
+                {% if freelancer.category %}
+                <p class="text-sm text-gray-500 mb-1">{{ freelancer.category.name }}
+                {% endif %}
+
+                {% with sub=freelancer.get_current_subscription %}
+                    {% if sub and sub.plan.name != 'free' and sub.status == 'active' %}
+                        {% if sub.plan.name == 'member' %}
+                            <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded bg-blue-100 text-blue-800 text-xs font-semibold" title="Member Plan">
+                                <i class="fas fa-gem mr-1"></i> Member
+                            </span>
+                        {% elif sub.plan.name == 'pro' %}
+                            <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded bg-purple-100 text-purple-800 text-xs font-semibold" title="Pro Plan">
+                                <i class="fas fa-crown mr-1"></i> Pro
+                            </span>
+                        {% endif %}
+                    {% endif %}
+                {% endwith %}
+            </p>
+
+                {% if freelancer.skills.all %}
+                <div class="mt-3 flex flex-col items-start gap-2">
+                    {% for f_skill in freelancer.skills.all|slice:":1" %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                            {{ f_skill.skill.name }}
+                        </span>
+                    {% endfor %}
+                    {% if freelancer.skills.all|length > 1 %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                            +{{ freelancer.skills.all|length|add:"-1" }}
+                        </span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="mt-3">
+                  <p class="text-sm text-gray-400">No skills added</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-gray-100">
+                {% if freelancer.rating and freelancer.rating > 0 %}
+                <div class="grid grid-cols-3 divide-x divide-gray-200 text-center">
+                    <div class="p-2">
+                        <p class="font-bold text-green-600 text-md">৳{{ freelancer.hourly_rate|floatformat:0 }}/hr</p>
+                        <p class="text-xs text-gray-500">{% trans "Rate" %}</p>
+                    </div>
+                    <div class="p-2">
+                        <p class="font-bold text-md">
+                            {{ freelancer.rating|floatformat:1 }}
+                        </p>
+                        <p class="text-xs text-gray-500">{% trans "Rating" %}</p>
+                    </div>
+                    <div class="p-2">
+                        <p class="font-bold text-md">
+                            {% if freelancer.completed_jobs_count < 3 %}
+                                0 - 3
+                            {% else %}
+                                {{ freelancer.completed_jobs_count }}
+                            {% endif %}
+                        </p>
+                        <p class="text-xs text-gray-500">{% trans "Jobs" %}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="grid grid-cols-2 divide-x divide-gray-200 text-center">
+                    <div class="p-2">
+                        <p class="font-bold text-green-600 text-md">৳{{ freelancer.hourly_rate|floatformat:0 }}/hr</p>
+                        <p class="text-xs text-gray-500">{% trans "Rate" %}</p>
+                    </div>
+                    <div class="p-2">
+                        <p class="font-bold text-md">
+                            {% if freelancer.completed_jobs_count < 3 %}
+                                0 - 3
+                            {% else %}
+                                {{ freelancer.completed_jobs_count }}
+                            {% endif %}
+                        </p>
+                        <p class="text-xs text-gray-500">{% trans "Jobs" %}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+</div>
+{% empty %}
+<div class="col-span-full">
+    <div class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">{% trans "No freelancers found" %}</h3>
+        <p class="mt-1 text-sm text-gray-500">{% trans "Try adjusting your search or filter criteria" %}</p>
+    </div>
+</div>
+{% endfor %} 

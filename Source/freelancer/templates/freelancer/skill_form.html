@@ -1,0 +1,62 @@
+{% extends 'layouts/default/base.html' %}
+
+{% block title %}{% if form.instance.pk %}Edit Skill{% else %}Add Skill{% endif %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Form Header -->
+            <div class="px-6 py-8 border-b border-gray-100">
+                <h1 class="text-3xl font-bold text-gray-900">{% if form.instance.pk %}Edit Skill{% else %}Add Skill{% endif %}</h1>
+                <p class="mt-2 text-sm text-gray-600">Add or update your professional skills. You can add up to 5 skills.</p>
+            </div>
+
+            <!-- Form Content -->
+            <form method="post" class="divide-y divide-gray-100">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="p-6 bg-red-50 border-b border-red-100">
+                    {% for error in form.non_field_errors %}
+                        <p class="text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="p-6">
+                    <div class="space-y-6">
+                        <!-- Skill Selection -->
+                        <div>
+                            <label for="{{ form.skill.id_for_label }}" class="block text-sm font-medium text-gray-700">Skill</label>
+                            {{ form.skill }}
+                            {% if form.skill.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.skill.errors }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Skill Level -->
+                        <div>
+                            <label for="{{ form.level.id_for_label }}" class="block text-sm font-medium text-gray-700">Skill Level</label>
+                            {{ form.level }}
+                            {% if form.level.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.level.errors }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                    <a href="{% url 'freelancer:edit' pk=freelancer.pk %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Cancel
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        {% if form.instance.pk %}Save Changes{% else %}Add Skill{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

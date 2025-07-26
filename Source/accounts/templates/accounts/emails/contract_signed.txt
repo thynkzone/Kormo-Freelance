@@ -1,0 +1,20 @@
+{% load i18n %}
+
+{% trans "Hello" %} {{ user.username }},
+
+{% trans "Great news! The contract for your job" %} {{ job.title }} {% trans "has been signed by" %} {{ signer.username }}.
+
+{% trans "The contract is now active and the work can begin." %}
+
+{% trans "View the contract here:" %}
+{{ contract_url }}
+
+{% trans "Contract Details:" %}
+- {% trans "Job Title:" %} {{ job.title }}
+- {% trans "Amount:" %} {{ amount }}
+- {% trans "Signed by:" %} {{ signer.username }}
+- {% trans "Signed at:" %} {{ signed_at }}
+
+{% trans "You can now proceed with the work according to the contract terms." %}
+
+{% trans "This is an automated message, please do not reply to this email." %} 
