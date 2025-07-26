@@ -252,9 +252,8 @@ Copyright © 2020 by Md Mazidul Haque Farabi. All rights reserved.
 
 If you encounter any issues or have questions:
 
-1. Check the [Issues](https://github.com/yourusername/your-platform/issues) page
-2. Create a new issue with detailed information
-3. Contact the maintainers
+1. Create a new issue with detailed information
+2. Contact the maintainers
 
 ## 🔐 Security
 
